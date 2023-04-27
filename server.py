@@ -22,12 +22,13 @@ class Server():
         s = socket.socket(family= AF_INET, type= SOCK_STREAM)
         self.socket_server = s
         s.bind((self.HOST, self.PORT))
-        s.listen(1)
+        s.listen(1) #TODO Considerar en cambiar este numero
 
         while self.runing:
             (socket_client, addr_client) = s.accept()
             data = socket_client.recv(1024)
-            self.switch_no_sign(socket_client, addr_client, data)
+            t = Thread(target=self.switch_no_sign, args= [socket_client, addr_client, data])
+            t.start()
             
 
     def switch_no_sign(self, socket_client, addr_client, data_bytes):
