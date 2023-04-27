@@ -1,6 +1,9 @@
-from model import User, Tweet, ReTweet, Follow, Token
-from util import gen_token
-
+try:
+    from model import User, Tweet, ReTweet, Follow, Token
+    from util import gen_token
+except:
+    from API.model import User, Tweet, ReTweet, Follow, Token
+    from API.util import gen_token
 # Consultas
 
 def CreateUser(name, alias, password):
