@@ -1,9 +1,12 @@
 import socket
 from socket import AF_INET, SOCK_STREAM
 from threading import Thread
-import util
-from util import PORT_GENERAL
-
+try:
+    import util
+    from util import PORT_GENERAL
+except:
+    import API.util as util
+    from API.util import PORT_GENERAL
 class Client():
 
     def __init__(self) -> None:
