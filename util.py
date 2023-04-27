@@ -1,4 +1,8 @@
 import json
+import string
+import secrets
+
+alphabet = string.ascii_letters + string.digits
 
 # Protocolos de pedidos
 
@@ -17,3 +21,6 @@ def decode(data_bytes):
     Decodifica bytes para interpretarlo como diccionario de Python
     '''
     return json.loads(data_bytes)
+
+def gen_token(n_bytes):
+    return ''.join(secrets.choice(alphabet) for i in range(n_bytes))
