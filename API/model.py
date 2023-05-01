@@ -1,4 +1,3 @@
-import peewee
 from peewee import Model, SqliteDatabase, CharField, DateField, IntegerField, ForeignKeyField
 
 main_db = SqliteDatabase('social_network.db')

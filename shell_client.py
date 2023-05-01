@@ -1,4 +1,20 @@
 import API.client
+# Flujo del cliente
+# * Autenticacion?
+# * Resuelve el ip del servidor
+# * Si no hay token
+#   * Si no esta registrado se registra
+#   * Si Esta registrado y se logea
+# * Darle feed al usuario
+#   * Pedir el feed
+#   * Codificar el feed para enviarlo
+#   * Recibe el feed
+#   * Lo decodifica
+#   * Lo muestra
+
+# enquieries para escoger entre opciones
+# click tiene un pager, editor
+# prompt tiene replies, history, autosugestion, autocompletion
 
 class ShellClient():
 

@@ -130,3 +130,7 @@ dmypy.json
 
 # SQLite DataBase
 *.db
+
+# mio
+redes
+.gitignore

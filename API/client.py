@@ -7,6 +7,9 @@ try:
 except:
     import API.util as util
     from API.util import PORT_GENERAL
+
+
+
 class Client():
 
     def __init__(self) -> None:
@@ -15,6 +18,8 @@ class Client():
     def set_ip_server(self, ip_server):
         self.HOST_SERVER = ip_server
             
+    def use_token(self,name):
+        pass
 
     def sign_up(self, name, nick, password):
         '''
@@ -60,3 +65,9 @@ class Client():
 
         #TODO
         raise NotImplementedError()
+    
+    def get_feed(self):
+        pass
+
+    def follow_name(self):
+        pass
