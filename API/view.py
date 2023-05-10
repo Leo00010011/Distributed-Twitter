@@ -24,7 +24,8 @@ def CreateToken(user_id):
     token = gen_token(64)
     while CheckToken(token):
         token = gen_token(64)
-    Token.create(user_id= user_id, token= token)
+    Token.create(id= user_id, token= token)
+    return token
 
 def CheckToken(token):
     '''
@@ -32,7 +33,7 @@ def CheckToken(token):
     En caso de no ser encontrado devuelve None
     '''
     try:
-        return Token.select().where(Token.token == token).get().user_id
+        return Token.select().where(Token.token == token).get().id
     except:
         return None    
 
@@ -46,7 +47,7 @@ def RemoveToken(user_id, token):
     '''
     Elimina de forma segura el token
     '''
-    Token.delete().where(Token.token == token, Token.user_id == user_id).execute()
+    Token.delete().where(Token.token == token, Token.id == user_id).execute()
 
 def CreateTweet(user_id, text):
     if User.select().where(User.id == user_id).count() == 1:

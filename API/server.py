@@ -5,9 +5,11 @@ from threading import Thread
 try:
     import util
     from util import PORT_GENERAL
+    import view
 except:
     import API.util as util
     from API.util import PORT_GENERAL
+    import API.view as view
 class Server():
 
     def __init__(self) -> None:
@@ -75,9 +77,13 @@ class Server():
         `data_dict['name']`:
         `data_dict['password']`: Contrasenna
         '''
+        name = data_dict['name']
+        password = data_dict['password']
+        
+        user = view.GetUserName(name)
+        if user and user.password == password:
+            view.CreateToken(user.id)
 
-        #TODO
-        raise NotImplementedError()
     
     def tweet(self, socket_client, addr_client, data_dict):
         '''
