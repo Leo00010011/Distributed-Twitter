@@ -117,8 +117,12 @@ class Server():
         `data_dict['id_tweet']`: Id del Tweet
         `data_dict['token']`: Token
         '''
+
+        user_id = data_dict['id_tweet']
+        token = data_dict['token']
+        
         if view.CreateReTweet(user = user_id, tweet=tweet_id):
             #Aqui devolver algo plan  
             return 
         else:
-            
+            #Aqui devolver mensaje de error al retwitear

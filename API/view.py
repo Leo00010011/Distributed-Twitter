@@ -71,14 +71,16 @@ def RemoveToken(user_id, token):
     '''
     Token.delete().where(Token.token == token, Token.id == user_id).execute()
 
-def CreateTweet(user_id, text):
-    if User.select().where(User.id == user_id).count() == 1:
+def CreateTweet(token, text):
+    user_id = CheckToken(token)
+    if user_id:
         Tweet.create(user_id= user_id, text= text)
         return True
     else:
         return False
 
 def CreateReTweet(user_id, tweet_id):
+    
     try:
         ReTweet.create(user = user_id, tweet=tweet_id)
         return True
