@@ -7,7 +7,7 @@ main_db = SqliteDatabase('social_network.db')
 
 class User(Model):
     name = CharField(120)
-    alias = CharField(16)
+    alias = CharField(16, unique=True)
     password = CharField(32)
 
     class Meta:
@@ -18,7 +18,8 @@ class Follow(Model):
     followed = ForeignKeyField(User)
 
     class Meta:
-        database = main_db    
+        database = main_db 
+        indexes = (((follower, followed), True), )   
 
 class Tweet(Model):
     text = CharField(256)
@@ -33,10 +34,11 @@ class ReTweet(Model):
 
     class Meta:
         database = main_db
+        indexes = (((user, tweet), True), ) 
 
 class Token(Model):
     user_id = ForeignKeyField(User)
-    token = CharField(64)
+    token = CharField(64, unique=True)
 
     class Meta:
         database = main_db
