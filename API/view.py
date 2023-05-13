@@ -7,13 +7,35 @@ except:
 # Consultas
 
 def CreateUser(name, alias, password):
-    pass
+    try:
+        User.create(name= name, alias=alias, password=password)
+        return True
+    except:
+        return False
 
 def CheckUserAlias(alias):
-    raise NotImplementedError()
+    '''
+    Devualve el ID del Usuario asignado al Alias
+    En caso de no ser enconteado devuelve None
+    '''
+    try:
+        return User.select().where(User.alias == alias).get().id
+    except:
+        return None
 
-def GetUserName(name):
-    raise NotImplementedError()
+
+def GetTokenLogIn(alias, password):
+    '''
+    Cuando el usuario se logea con alias y contrasenna 
+    se busca que este usuario exista y se le asigna un token
+    en caso de que si y se devuelve este Token
+    '''
+    user = User.select().where(User.alias == alias)
+    if  user:
+        if user.get().password == password:
+            return CreateToken(user.get().id)
+    return False
+
 
 def CreateToken(user_id):
     '''
@@ -49,15 +71,22 @@ def RemoveToken(user_id, token):
     '''
     Token.delete().where(Token.token == token, Token.id == user_id).execute()
 
-def CreateTweet(user_id, text):
-    if User.select().where(User.id == user_id).count() == 1:
+def CreateTweet(token, text):
+    user_id = CheckToken(token)
+    if user_id:
         Tweet.create(user_id= user_id, text= text)
         return True
     else:
         return False
 
 def CreateReTweet(user_id, tweet_id):
-    raise NotImplementedError()
+    
+    try:
+        ReTweet.create(user = user_id, tweet=tweet_id)
+        return True
+    except: 
+        return False
+
 
 
 

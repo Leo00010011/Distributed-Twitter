@@ -25,19 +25,16 @@ class Client():
         `password`: Contrasenna
         '''
 
-        #TODO
-        raise NotImplementedError()
+
     
-    def sign_in(self, name, password):
+    def sign_in(self, alias, password):
         '''
         Iniciar sesion de usuario
         -------------
-        `name`: Nombre de Usuario
+        `alias`: Nick de Usuario
         `password`: Contrasenna
         '''
-
-        #TODO
-        raise NotImplementedError()
+       
     
     def tweet(self, text, token):
         '''
@@ -47,8 +44,6 @@ class Client():
         `token`: Token
         '''
 
-        #TODO
-        raise NotImplementedError()
     
     def retweet(self, id_tweet, token):
         '''
