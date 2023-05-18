@@ -10,18 +10,19 @@ except:
     import API.util as util
     from API.util import PORT_GENERAL
     import API.view as view
-class Server():
 
-    def __init__(self) -> None:
+class LoggerServer():
+    
+    def __init__(self):
         self.HOST = "0.0.0.0"
-        self.PORT = PORT_GENERAL
+        self.PORT = "" #TODO DefinePort
         self.socket_server = None
 
         self.runing = False        
         
         self.list_clients_pasive_listen  = {}
 
-    def general_listen(self):
+    def listen(self):
         if self.runing:
             return
         self.runing = True
@@ -33,18 +34,18 @@ class Server():
         while self.runing:
             (socket_client, addr_client) = s.accept()
             data = socket_client.recv(1024)
-            t = Thread(target=self.switch_no_sign, args= [socket_client, addr_client, data])
+            t = Thread(target=self.switch_no_sign, args= [socket_client, addr_client, data], daemon=True)
             t.start()
             
 
-    def switch_no_sign(self, socket_client, addr_client, data_bytes):
+    def switch_no_sign(self, socket_client, addr_client, data_dict):
         '''
         Interprete y verificador de peticiones generales.
         Revisa que la estructura de la peticion sea adecuada,
         e interpreta la orden dada, redirigiendo el flujo de
         ejecucion interno del Server.
         ---------------------------------------
-        `data_bytes['type']`: Tipo de peticion
+        `data_dict['type']`: Tipo de peticion
         '''
         try:
             data_dict = util.decode(data_bytes)        
@@ -53,9 +54,12 @@ class Server():
             print(e)
             return
         
-        #TODO
-        # Implementar la seleccion de que accion realizar
-        raise NotImplementedError()
+        if type_rqst == "signin":
+            self.sign_in( socket_client, addr_client, data_dict)
+        elif type_rqst == "signup": 
+            self.sign_up( socket_client, addr_client, data_dict)
+
+        #TODO error de tipo
         
 
     def sign_up(self, socket_client, addr_client, data_dict):
@@ -66,10 +70,14 @@ class Server():
         `data_dict['nick']`: Alias de usuario
         `data_dict['password']`: Contrasenna
         '''
+  
+        nick = data_dict['nick']        
+        hashed = hash(nick)
+        #TODO Aqui comprobar si hashed esta en esta tabla, si no llamar al chord
+        
+   
         name = data_dict['name']
-        nick = data_dict['nick']
         password = data_dict['password']
-
         if view.CreateUser(name= name, alias=nick, password= password):
             return True
         else:
@@ -83,49 +91,12 @@ class Server():
         `data_dict['name']`:
         `data_dict['password']`: Contrasenna
         '''
+
+        hashed = hash(name)
         name = data_dict['name']
-        password = data_dict['password']
         
+        password = data_dict['password']
+
         user = view.GetUserName(name)
         if user and user.password == password:
             view.CreateToken(user.id)
-
-    
-    def tweet(self, socket_client, addr_client, data_dict):
-        '''
-        Publicar tweet
-        -------------
-        `data_dict['text']`: Texto
-        `data_dict['token']`: Token
-        '''
-
-        text = data_dict['text']
-        token = data_dict['token']
-
-        if len(text) >= 255:
-            # Aqui mandar algun error de exceso de contenido 
-            return
-        if view.CreateTweet(token = token, text = text):
-            pass
-            #Enviar confirmacion de post realizado
-        else:
-            pass
-            #Enviar error al publicar 
-    
-    def retweet(self, socket_client, addr_client, data_dict):
-        '''
-        Publicar tweet
-        -------------
-        `data_dict['id_tweet']`: Id del Tweet
-        `data_dict['token']`: Token
-        '''
-
-        user_id = data_dict['id_tweet']
-        token = data_dict['token']
-        
-        if view.CreateReTweet(user = user_id, tweet=tweet_id):
-            #Aqui devolver algo plan  
-            return 
-        else:
-            pass
-            #Aqui devolver mensaje de error al retwitear
