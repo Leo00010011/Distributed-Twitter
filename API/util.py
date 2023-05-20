@@ -24,3 +24,5 @@ def decode(data_bytes):
 
 def gen_token(n_bytes):
     return ''.join(secrets.choice(alphabet) for i in range(n_bytes))
+
+
