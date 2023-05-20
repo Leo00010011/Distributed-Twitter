@@ -12,7 +12,7 @@ class ShellServer():
             command = input()
             
             if command == "start":
-                t = Thread(target= self.server.general_listen)
+                t = Thread(target= self.server.general_listen, deamon=True)
                 t.start()
             if command == 'msg':
                 print('Holis')
