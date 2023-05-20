@@ -14,42 +14,22 @@ class Server():
 
     def __init__(self) -> None:
         self.HOST = "0.0.0.0"
-        self.PORT = PORT_GENERAL
-        
+      
 
-    def general_listen(self):
+    def general_listen(self, port, method_switch, listen_count=20, size_recv=1024):
+        
         if self.runing:
             return
         self.runing = True
         s = socket.socket(family= AF_INET, type= SOCK_STREAM)
         self.socket_server = s
-        s.bind((self.HOST, self.PORT))
-        s.listen(1) #TODO Considerar en cambiar este numero
+        s.bind((self.HOST, port))
+        s.listen(listen_count)
 
         while self.runing:
             (socket_client, addr_client) = s.accept()
-            data = socket_client.recv(1024)
-            t = Thread(target=self.switch_no_sign, args= [socket_client, addr_client, data])
+            data = socket_client.recv(size_recv)
+            t = Thread(target=method_switch, args= [socket_client, addr_client, data], daemon=True)
             t.start()
-            
-
-    def switch(self, socket_client, addr_client, data_bytes):
-        '''
-        Interprete y verificador de peticiones generales.
-        Revisa que la estructura de la peticion sea adecuada,
-        e interpreta la orden dada, redirigiendo el flujo de
-        ejecucion interno del Server.
-        ---------------------------------------
-        `data_bytes['type']`: Tipo de peticion
-        '''
-        try:
-            data_dict = util.decode(data_bytes)        
-            type_rqst = data_dict["type"]
-        except Exception as e:
-            print(e)
-            return
-        
-        #TODO
-        # Implementar la seleccion de que accion realizar
-        raise NotImplementedError()
+                
         
