@@ -15,11 +15,7 @@ class Server():
     def __init__(self) -> None:
         self.HOST = "0.0.0.0"
         self.PORT = PORT_GENERAL
-        self.socket_server = None
-
-        self.runing = False        
         
-        self.list_clients_pasive_listen  = {}
 
     def general_listen(self):
         if self.runing:
@@ -37,7 +33,7 @@ class Server():
             t.start()
             
 
-    def switch_no_sign(self, socket_client, addr_client, data_bytes):
+    def switch(self, socket_client, addr_client, data_bytes):
         '''
         Interprete y verificador de peticiones generales.
         Revisa que la estructura de la peticion sea adecuada,
@@ -57,72 +53,3 @@ class Server():
         # Implementar la seleccion de que accion realizar
         raise NotImplementedError()
         
-
-    def sign_up(self, socket_client, addr_client, data_dict):
-        '''
-        Registrar a un usuario en la red social
-        ------------------------------------
-        `data_dict['name']`: Nombre de usuario
-        `data_dict['nick']`: Alias de usuario
-        `data_dict['password']`: Contrasenna
-        '''
-        name = data_dict['name']
-        nick = data_dict['nick']
-        password = data_dict['password']
-
-        if view.CreateUser(name= name, alias=nick, password= password):
-            return True
-        else:
-            #Algun tipo de error de alias ya existente
-            pass
-    
-    def sign_in(self, socket_client, addr_client, data_dict):
-        '''
-        Iniciar sesion de usuario
-        -------------
-        `data_dict['name']`:
-        `data_dict['password']`: Contrasenna
-        '''
-        name = data_dict['name']
-        password = data_dict['password']
-        
-        user = view.GetUserName(name)
-        if user and user.password == password:
-            view.CreateToken(user.id)
-
-    
-    def tweet(self, socket_client, addr_client, data_dict):
-        '''
-        Publicar tweet
-        -------------
-        `data_dict['text']`: Texto
-        `data_dict['token']`: Token
-        '''
-
-        text = data_dict['text']
-        token = data_dict['token']
-
-        if len(text) >= 255:
-            # Aqui mandar algun error de exceso de contenido 
-            return
-        if view.CreateTweet(token = token, text = text):
-            #Enviar confirmacion de post realizado
-        else:
-            #Enviar error al publicar 
-    
-    def retweet(self, socket_client, addr_client, data_dict):
-        '''
-        Publicar tweet
-        -------------
-        `data_dict['id_tweet']`: Id del Tweet
-        `data_dict['token']`: Token
-        '''
-
-        user_id = data_dict['id_tweet']
-        token = data_dict['token']
-        
-        if view.CreateReTweet(user = user_id, tweet=tweet_id):
-            #Aqui devolver algo plan  
-            return 
-        else:
-            #Aqui devolver mensaje de error al retwitear
