@@ -1,6 +1,9 @@
 import json
 import string
 import secrets
+import time
+import heapq
+import random
 
 alphabet = string.ascii_letters + string.digits
 
@@ -42,9 +45,78 @@ def gen_token(n_bytes):
 class Dispatcher:
 
     def __init__(self) -> None:
-        pass
+        self.__next_petition_id = 0
+        self.petitions = {}
+        self.slaves = None
 
-class Gravedigger:
+    def insert_petition(self, petition):
+        ret = self.__next_petition_id
+        self.petitions[ret] = petition
+        self.__next_petition_id += 1
+        return ret
 
-    def __init__(self) -> None:
-        pass
+    def extract_petition(self, id):
+        return self.petitions.get(id, None)
+
+
+class Stalker:
+    '''
+    Estructura que guarda una lista de IP:Puertos (o Puertos),
+    con la ultima hora de actividad. Recomienda de forma aleatoria un IP
+    para verificar si est'a vivo a'un, pero d'ando mas probabilidad a los
+    IP menos actualizados.
+    '''
+    def __init__(self, type) -> None:
+        '''
+        Inicializa la estructura Stalker con el tipo de Server que la aloje.
+        Internamente utiliza una lista con tuplas de la forma (tiempo, IP:Port)
+        '''
+        self.list = []
+        self.type = type
+
+    def insert_IP(self, dir):
+        '''
+        Agrega una nueva direcci'on IP a la lista. La presupone nueva.
+        Utilizar mejor update cuando no se tiene la certeza de su existencia.        
+        '''
+        self.list.append((time.time(), dir))
+
+    def update_IP(self, dir):
+        '''
+        Actualiza el tiempo de un IP. Si este est'a solamente se actualiza el tiempo
+        con el tiempo actual. Si no est'a, se a~nade nuevo.
+        '''
+        for i, item in enumerate(self.list):
+            if item == dir:
+                self.list[i] = (time.time(), dir)
+                self.list.sort()
+                return
+        self.list.append(time.time(), dir)      
+
+    def extract_IP(self, dir):
+        '''
+        Se elimina el IP de la lista y se retorna su valor. Si este no existe
+        se retorna None
+        '''
+        for i, item in enumerate(self.list):
+            if item == dir:
+                return self.list.pop(i)
+        return None
+    
+    def recommended_dir(self):
+        '''
+        Se recomienda alg'un IP de la lista. Mientras m'as viejo, m'as probable
+        eres de ser recomendado.
+        '''
+        _, dir = random.choices(self.list,weights=range(len(self.list), 0, -1),k=1)[0]
+        return dir
+
+    def msg_stalk(self):
+        '''
+        Genera el mensaje de ALIVE_REQUEST
+        '''
+        msg = {
+            'type': self.type,
+            'proto': 1000, # Definir el protocolo de estar vivo.
+        }
+        return msg
