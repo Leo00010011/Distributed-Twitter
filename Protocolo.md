@@ -28,5 +28,3 @@
 |NEW_LOGGER_REQUEST| IPorigin| EntryPoint|El nuevo logger pide IP de algun otro logger|
 |ALIVE_RESPONSE | | EntryPoint | Avisa al EntryPoint que est'a vivo |
 |REGISTERCHORD| Hash, Nick, Name, Password, IDClient, IPOriginNode |
-|REGISTERERROR|
-|GETTOKEN|Nick,,

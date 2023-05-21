@@ -11,7 +11,8 @@ alphabet = string.ascii_letters + string.digits
 CLIENT = 0
 ENTRY_POINT = 1
 LOGGER = 2
-DATA_BASE = 4
+DATA_BASE = 3
+CHORD = 4
 
 # Protocolos de pedidos
 LOGIN_REQUEST = 0
@@ -20,6 +21,12 @@ CHORD_REQUEST = 2
 CHORD_RESPONSE = 3
 NEW_LOGGER_REQUEST = 4
 NEW_LOGGER_RESPONSE = 5
+ALIVE_REQUEST = 6
+ALIVE_RESPONSE = 7
+REGISTER_REQUEST = 8 
+REGISTER_RESPONSE = 9
+
+
 
 
 # Puertos de escucha
@@ -44,7 +51,7 @@ def gen_token(n_bytes):
 
 class Dispatcher:
 
-    def __init__(self) -> None:
+    def __init__(self):
         self.__next_petition_id = 0
         self.petitions = {}
         self.slaves = None
@@ -66,7 +73,7 @@ class Stalker:
     para verificar si est'a vivo a'un, pero d'ando mas probabilidad a los
     IP menos actualizados.
     '''
-    def __init__(self, type) -> None:
+    def __init__(self, type):
         '''
         Inicializa la estructura Stalker con el tipo de Server que la aloje.
         Internamente utiliza una lista con tuplas de la forma (tiempo, IP:Port)

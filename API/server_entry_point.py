@@ -17,8 +17,8 @@ except:
 
 class EntryPointServer(Server):
 
-    def __init__(self) -> None:
-        super().__init__()
+    def __init__(self):
+        Server.__init__(self)
         self.ID_actual = 0
         self.loggers_list = []
         self.entry_points = []

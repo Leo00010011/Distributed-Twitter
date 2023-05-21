@@ -4,41 +4,26 @@ from threading import Thread
 
 try:
     import util
-    from util import PORT_GENERAL
+    from server import Server
+    from util import Stalker, Dispatcher
+    from util import CHORD, CLIENT, ENTRY_POINT, LOGGER,LOGIN_REQUEST, LOGIN_RESPONSE, NEW_LOGGER_RESPONSE, NEW_LOGGER_REQUEST, CHORD_RESPONSE, GET_TOKEN, CHORD_REQUEST, ALIVE_REQUEST, ALIVE_RESPONSE, REGISTER_REQUEST, REGISTER_RESPONSE
     import view
 except:
     import API.util as util
-    from API.util import PORT_GENERAL
+    from API.server import Server
+    from API.util import Stalker, Dispatcher
+    from API.util import CLIENT, ENTRY_POINT, LOGGER,LOGIN_REQUEST, LOGIN_RESPONSE
     import API.view as view
 
-class LoggerServer():
+class LoggerServer(Server):
     
     def __init__(self):
-        self.HOST = "0.0.0.0"
-        self.PORT = "" #TODO DefinePort
-        self.socket_server = None
 
-        self.runing = False        
-        
-        self.list_clients_pasive_listen  = {}
+        Server.__init__(self)
+        self.ID  = 0
 
-    def listen(self):
-        if self.runing:
-            return
-        self.runing = True
-        s = socket.socket(family= AF_INET, type= SOCK_STREAM)
-        self.socket_server = s
-        s.bind((self.HOST, self.PORT))
-        s.listen(1) #TODO Considerar en cambiar este numero
 
-        while self.runing:
-            (socket_client, addr_client) = s.accept()
-            data = socket_client.recv(1024)
-            t = Thread(target=self.switch_no_sign, args= [socket_client, addr_client, data], daemon=True)
-            t.start()
-            
-
-    def switch_no_sign(self, socket_client, addr_client, data_dict):
+    def switch(self, socket_client, addr_client, data_dict):
         '''
         Interprete y verificador de peticiones generales.
         Revisa que la estructura de la peticion sea adecuada,
@@ -48,21 +33,33 @@ class LoggerServer():
         `data_dict['type']`: Tipo de peticion
         '''
         try:
-            data_dict = util.decode(data_bytes)        
-            type_rqst = data_dict["type"]
+            data_dict = util.decode(data_bytes)
+            type_rqst = data_dict["type"]       
+            proto_rqst = data_dict["proto"]
         except Exception as e:
             print(e)
             return
         
-        if type_rqst == "LOGIN_REQUEST":
-            self.login_request(socket_client, addr_client, data_dict)
-        elif type_rqst == "CHORD_RESPONSE":
-            self.chord_response(socket_client, addr_client, data_dict)
-        elif type_rqst == "GET_TOKEN":
-            self.get_token(socket_client, addr_client, data_dict)
-        elif type_rqst == "signup": 
-            self.sign_up( socket_client, addr_client, data_dict)
-
+        if type_rqst == ENTRY_POINT:
+            if proto_rqst == LOGIN_REQUEST:
+                self.login_request(socket_client, addr_client, data_dict)
+            elif proto_rqst == NEW_LOGGER_RESPONSE: 
+                pass #TODO 
+            elif proto_rqst == ALIVE_REQUEST:
+                pass #TODO
+            elif proto_rqst == REGISTER_REQUEST:
+                pass #TODO
+        
+        elif type_rqst == LOGGER:
+            if proto_rqst == CHORD_RESPONSE:
+                self.chord_response(socket_client, addr_client, data_dict)
+            elif proto_rqst == LOGIN_REQUEST:
+                self.get_token(socket_client, addr_client, data_dict)
+            elif proto_rqst == LOGIN_RESPONSE: #TODO set_token
+                self.set_token(socket_client, addr_client, data_dict)
+        
+        else: 
+            pass
         #TODO error de tipo
         
 
@@ -101,11 +98,14 @@ class LoggerServer():
 
         #Hay que usar Chord para ver quien tiene a ese Nick
         nick = data_dict['nick']
-        data = {} #Construir la peticion del chord
-        data["type"] = "CHORD_REQUEST"
-        data["Hash"] = hash(nick)
-        data["IDrequest"] = self.ID
-        data["IP"] = self.socket_server
+        data = {
+                "type" : LOGGER,
+                "ptoto": CHORD_REQUEST,
+                "Hash": hash(nick),
+                "ID_request": self.ID,
+                "IP": self.socket_server
+        } #Construir la peticion del chord
+  
 
         self.ID +=1
         #Mandar el mensaje para iniciar el chord a la direccion que atiende esos pedidos
@@ -119,22 +119,58 @@ class LoggerServer():
         `data_dict['IDrequest']`: Configuracion del ususario
         '''
 
-        IDrequest = data_dict["IDrequest"]
+        IDrequest = data_dict["ID_request"]
         _,_, info = self.list_clients_pasive_listen.get(IDrequest)
-        data = {}
-        data["type"] = "GET_TOKEN"
-        data["nick"] = info["nick"]
-        data["password"] = info["password"]
-        data["IP"] = self.socket_server
+        
+        data = {
+            "type": LOGGER,
+            "proto": LOGIN_REQUEST,
+            "nick": info["nick"],
+            "password": info["password"],
+            "ID_request": self.socket_server,
+        }
 
         socket_client.send(util.encode(dict))
+        socket_client.close()
 
     def get_token(self, socket_client, addr_client, data_dict):
         '''
-        Contactar directamente con el Logger que contiene el loggeo de un usuario 
+        Loggear al usuario
         -------------
-        `data_dict['IP']`: IP al que escribir
-        `data_dict['IDrequest']`: Configuracion del ususario
+        `data_dict['nick']`: Nick
+        `data_dict['Password']`: Password
         ''' 
+        nick = data_dict["nick"]
+        password = data_dict["password"]
+        try:
+            Token = view.LogIn(nick, password)
+            if Token:
+                dict ={
+                    'type': LOGGER,
+                    'proto': LOGIN_RESPONSE,
+                    'succesed': True,
+                    'token': Token,
+                    'error': None,
+                    'ID_request': data_dict['ID_request']
+                }
+            else:
+                dict ={
+                    'type': LOGGER,
+                    'proto': LOGIN_RESPONSE,
+                    'succesed': False,
+                    'token': None,
+                    'error': "Invalid nick or password",
+                    'ID_request': data_dict['ID_request']
+                }     
+        except:
+                dict ={
+                    'type': LOGGER,
+                    'proto': LOGIN_RESPONSE,
+                    'succesed': False,
+                    'token': None,
+                    'error': "User not register",
+                    'ID_request': data_dict['ID_request']
+                }
+        socket_client.send(util.encode(dict))
+        socket_client.close()
 
-        
