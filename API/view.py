@@ -19,7 +19,7 @@ def CheckUserAlias(alias):
     En caso de no ser enconteado devuelve None
     '''
     try:
-        return User.select().where(User.alias == alias).get().id
+        return User.select().where(User.alias == alias).get()
     except:
         return None
 
@@ -36,6 +36,12 @@ def GetTokenLogIn(alias, password):
             return CreateToken(user.get().id)
     return False
 
+def LogIn(alias, password):
+
+    user = CheckUserAlias(alias)
+    if user and user.password == password:
+           return view.CreateToken(user.id)
+    return None
 
 def CreateToken(user_id):
     '''

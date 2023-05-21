@@ -12,7 +12,7 @@ except:
     import API.view as view
 class Server():
 
-    def __init__(self) -> None:
+    def __init__(self):
         self.HOST = "0.0.0.0"
         self.PORT = PORT_GENERAL
         self.socket_server = None

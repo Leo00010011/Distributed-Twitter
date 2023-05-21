@@ -3,7 +3,7 @@ from threading import Thread
 
 class ShellServer():
 
-    def __init__(self) -> None:
+    def __init__(self):
         self.server = API.server.Server()
 
     def run(self):

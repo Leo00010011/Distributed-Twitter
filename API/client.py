@@ -9,7 +9,7 @@ except:
     from API.util import PORT_GENERAL
 class Client():
 
-    def __init__(self) -> None:
+    def __init__(self):
         self.HOST_SERVER = None
 
     def set_ip_server(self, ip_server):
