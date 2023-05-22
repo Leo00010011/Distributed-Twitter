@@ -12,7 +12,7 @@ except:
     import API.view as view
 class Server():
 
-    def __init__(self) -> None:
+    def __init__(self):
         self.HOST = "0.0.0.0"
         self.PORT = PORT_GENERAL
         self.socket_server = None
@@ -106,8 +106,10 @@ class Server():
             # Aqui mandar algun error de exceso de contenido 
             return
         if view.CreateTweet(token = token, text = text):
+            pass
             #Enviar confirmacion de post realizado
         else:
+            pass
             #Enviar error al publicar 
     
     def retweet(self, socket_client, addr_client, data_dict):
@@ -125,4 +127,5 @@ class Server():
             #Aqui devolver algo plan  
             return 
         else:
+            pass
             #Aqui devolver mensaje de error al retwitear
