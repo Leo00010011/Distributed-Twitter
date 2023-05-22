@@ -12,7 +12,7 @@ except:
     import API.util as util
     from API.server import Server
     from API.util import Stalker, Dispatcher
-    from API.util import CLIENT, ENTRY_POINT, LOGGER,LOGIN_REQUEST, LOGIN_RESPONSE
+    from API.util import CHORD, CLIENT, ENTRY_POINT, LOGGER,LOGIN_REQUEST, LOGIN_RESPONSE, NEW_LOGGER_RESPONSE, NEW_LOGGER_REQUEST, CHORD_RESPONSE, GET_TOKEN, CHORD_REQUEST, ALIVE_REQUEST, ALIVE_RESPONSE, REGISTER_REQUEST, REGISTER_RESPONSE
     import API.view as view
 
 class LoggerServer(Server):
@@ -21,6 +21,7 @@ class LoggerServer(Server):
 
         Server.__init__(self)
         self.ID  = 0
+        self.list_clients_pasive_listen = {}
 
 
     def switch(self, socket_client, addr_client, data_dict):
@@ -55,7 +56,7 @@ class LoggerServer(Server):
                 self.chord_response(socket_client, addr_client, data_dict)
             elif proto_rqst == LOGIN_REQUEST:
                 self.get_token(socket_client, addr_client, data_dict)
-            elif proto_rqst == LOGIN_RESPONSE: #TODO set_token
+            elif proto_rqst == LOGIN_RESPONSE: 
                 self.set_token(socket_client, addr_client, data_dict)
         
         else: 
@@ -74,7 +75,6 @@ class LoggerServer(Server):
   
         nick = data_dict['nick']        
         hashed = hash(nick)
-        #TODO Aqui comprobar si hashed esta en esta tabla, si no llamar al chord
         
    
         name = data_dict['name']
@@ -174,3 +174,33 @@ class LoggerServer(Server):
         socket_client.send(util.encode(dict))
         socket_client.close()
 
+    def set_token(self, socket_client, addr_client, data_dict):
+        
+        Id = data_dict["ID_request"]
+        try:
+           socket,_,_ =  self.list_clients_pasive_listen.pop(Id)
+           dict = {
+            'type':LOGGER,
+            'proto': LOGIN_RESPONSE,
+            'succesed': data_dict['succesed'],
+            'token': data_dict['token'],
+            'error':data_dict['error'],
+           }
+           socket.send(util.encode(dict))
+           socket.close()
+        except:
+            pass
+    
+    def alive_request(self, socket_client, addr_client, data_dict):
+        dict = {
+            'type': LOGGER,
+            'proto': ALIVE_RESPONSE,
+        }
+        socket_client.send(util.encode(dict))
+        socket_client.close()
+
+
+class DataServer():
+    def share_info(self, socket_client, addr_client, data_dict):
+        hash_limit = data_dict['logguer_id']
+          

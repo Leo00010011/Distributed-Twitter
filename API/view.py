@@ -94,5 +94,7 @@ def CreateReTweet(user_id, tweet_id):
         return False
 
 
+def GetUserPaswordRange(hash_limit):
+    User.select().where(User.alias <= hash_limit).orederby(User.alias).limit(10)
 
 
