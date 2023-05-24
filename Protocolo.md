@@ -13,7 +13,8 @@
 |LOGIN_RESPONSE      |Succesed, Token               | Client    | El entry point responde con el Token al cliente |
 |NEW_LOGGUER_RESPONSE| IP| Logger | Respuesta al nuevo logger con el IP de algun logger para que coordinen|
 |REGISTER   |Name, Nick, Password| Logger    |El entry point pide a un loguer que registre al usuario |
-
+|ALIVE_REQUEST | | Logger | Pregunta a un Logger si est'a vivo |
+|ALIVE_REQUEST | | DataBase | Pregunta a un Logger si est'a vivo |
 
 ### Loggers
 
@@ -25,6 +26,5 @@
 |LOGIN_RESPONSE | Succesed, IDrequest, TOKEN     |Logguer| Encontrado el recurso del Chord, enviarselo al Logguer que lo solicitó|
 |LOGIN_RESPONSE | Succesed, TOKEN, ID| EntryPoint | |
 |NEW_LOGGER_REQUEST| IPorigin| EntryPoint|El nuevo logger pide IP de algun otro logger|
+|ALIVE_RESPONSE | | EntryPoint | Avisa al EntryPoint que est'a vivo |
 |REGISTERCHORD| Hash, Nick, Name, Password, IDClient, IPOriginNode |
-|REGISTERERROR|
-|GETTOKEN|Nick,,
