@@ -1,6 +1,6 @@
 import socket
 from socket import AF_INET, SOCK_STREAM
-from threading import Thread
+from threading import Thread, Event
 
 
 try:
@@ -24,9 +24,6 @@ class LoggerServer(MultiThreadedServer):
     def __init__(self,port: int, task_max: int, thread_count: int, timout: int, parse_func):
 
         MultiThreadedServer.__init__(self,port, task_max, thread_count, timout, LoggerServer.switch)
-        self.ID  = 0
-        self.list_clients_pasive_listen = {}
-
 
     def switch(id:int, task: tuple[socket,object], event:Event):
         '''
@@ -99,46 +96,63 @@ class LoggerServer(MultiThreadedServer):
         `data_dict['nick']`: Nick
         `data_dict['password']`: Contrasenna
         '''
-        #Guardar el cliente para cuando este la respuesta
-        self.list_clients_pasive_listen[self.ID] = (socket_client, addr_client, data_dict)
-
-
+        #TODO pedir un evento para m\'aquina de estado 
+        event, Id = None, None
+        
         #Hay que usar Chord para ver quien tiene a ese Nick
         nick = data_dict['nick']
         data = {
                 "type" : LOGGER,
                 "ptoto": CHORD_REQUEST,
                 "Hash": hash(nick),
-                "ID_request": self.ID,
+                "ID_request": Id,
                 "IP": self.socket_server
         } #Construir la peticion del chord
-  
-
-        self.ID +=1
-        #Mandar el mensaje para iniciar el chord a la direccion que atiende esos pedidos
-        self.chord_socket.send(util.encode(data))
-    
-    def chord_response(socket_client, addr_client, data_dict):
-        '''
-        Contactar directamente con el Logger que contiene el loggeo de un usuario 
-        -------------
-        `data_dict['IP']`: IP al que escribir
-        `data_dict['IDrequest']`: Configuracion del ususario
-        '''
-
-        IDrequest = data_dict["ID_request"]
-        _,_, info = self.list_clients_pasive_listen.get(IDrequest)
         
-        data = {
-            "type": LOGGER,
-            "proto": LOGIN_REQUEST,
-            "nick": info["nick"],
-            "password": info["password"],
-            "ID_request": self.socket_server,
-        }
+        self.chord_socket.send(util.encode(data))
+        w = event.wait(5)
+        if w:
+            #TODO Escribirle al server que tiene al usuario
+            event, Id = None, None
+            data = {
+                "type": LOGGER,
+                "proto": LOGIN_REQUEST,
+                "nick": info["nick"],
+                "password": info["password"],
+                "ID_request": Id,
+            }
+            w2 = event.wait(5)
+            if w2:
+                #TODO reenviar mensaje de autenticacion
+                socket_client.send(util.encode("ASK_DATA"))
+                socket_client.close()
 
-        socket_client.send(util.encode(dict))
-        socket_client.close()
+        #TODO enviar mensaje de red caida
+
+
+
+
+    # def chord_response(socket_client, addr_client, data_dict):
+    #     '''
+    #     Contactar directamente con el Logger que contiene el loggeo de un usuario 
+    #     -------------
+    #     `data_dict['IP']`: IP al que escribir
+    #     `data_dict['IDrequest']`: Configuracion del ususario
+    #     '''
+
+    #     IDrequest = data_dict["ID_request"]
+    #     _,_, info = self.list_clients_pasive_listen.get(IDrequest)
+        
+    #     data = {
+    #         "type": LOGGER,
+    #         "proto": LOGIN_REQUEST,
+    #         "nick": info["nick"],
+    #         "password": info["password"],
+    #         "ID_request": self.socket_server,
+    #     }
+
+    #     socket_client.send(util.encode(dict))
+    #     socket_client.close()
 
     def get_token(socket_client, addr_client, data_dict):
         '''
@@ -178,8 +192,13 @@ class LoggerServer(MultiThreadedServer):
                     'error': "User not register",
                     'ID_request': data_dict['ID_request']
                 }
-        socket_client.send(util.encode(dict))
-        socket_client.close()
+        
+        #TODO llamar al evento para hacerle set 
+        #TODO poner los datos en donde van
+        event = None
+        event.set()
+        # socket_client.send(util.encode(dict))
+        # socket_client.close()
 
     def set_token(socket_client, addr_client, data_dict):
         
