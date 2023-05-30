@@ -2,29 +2,33 @@ import socket
 from socket import AF_INET, SOCK_STREAM
 from threading import Thread
 
+
 try:
     import util
     from server import Server
     from util import Stalker, Dispatcher
     from util import CHORD, CLIENT, ENTRY_POINT, LOGGER,LOGIN_REQUEST, LOGIN_RESPONSE, NEW_LOGGER_RESPONSE, NEW_LOGGER_REQUEST, CHORD_RESPONSE, GET_TOKEN, CHORD_REQUEST, ALIVE_REQUEST, ALIVE_RESPONSE, REGISTER_REQUEST, REGISTER_RESPONSE
     import view
+    from threaded_server import MultiThreadedServer
 except:
     import API.util as util
     from API.server import Server
     from API.util import Stalker, Dispatcher
     from API.util import CHORD, CLIENT, ENTRY_POINT, LOGGER,LOGIN_REQUEST, LOGIN_RESPONSE, NEW_LOGGER_RESPONSE, NEW_LOGGER_REQUEST, CHORD_RESPONSE, GET_TOKEN, CHORD_REQUEST, ALIVE_REQUEST, ALIVE_RESPONSE, REGISTER_REQUEST, REGISTER_RESPONSE
     import API.view as view
+    from API.threaded_server import MultiThreadedServer
 
-class LoggerServer(Server):
+
+class LoggerServer(MultiThreadedServer):
     
-    def __init__(self):
+    def __init__(self,port: int, task_max: int, thread_count: int, timout: int, parse_func):
 
-        Server.__init__(self)
+        MultiThreadedServer.__init__(self,port, task_max, thread_count, timout, LoggerServer.switch)
         self.ID  = 0
         self.list_clients_pasive_listen = {}
 
 
-    def switch(self, socket_client, addr_client, data_dict):
+    def switch(id:int, task: tuple[socket,object], event:Event):
         '''
         Interprete y verificador de peticiones generales.
         Revisa que la estructura de la peticion sea adecuada,
@@ -33,6 +37,9 @@ class LoggerServer(Server):
         ---------------------------------------
         `data_dict['type']`: Tipo de peticion
         '''
+        (socket_client, addr_client) = task
+        data_byte = socket_client.recv(1024)
+        
         try:
             data_dict = util.decode(data_bytes)
             type_rqst = data_dict["type"]       
@@ -43,7 +50,7 @@ class LoggerServer(Server):
         
         if type_rqst == ENTRY_POINT:
             if proto_rqst == LOGIN_REQUEST:
-                self.login_request(socket_client, addr_client, data_dict)
+                LoggerServer.login_request(socket_client, addr_client, data_dict)
             elif proto_rqst == NEW_LOGGER_RESPONSE: 
                 pass #TODO 
             elif proto_rqst == ALIVE_REQUEST:
@@ -53,18 +60,18 @@ class LoggerServer(Server):
         
         elif type_rqst == LOGGER:
             if proto_rqst == CHORD_RESPONSE:
-                self.chord_response(socket_client, addr_client, data_dict)
+                LoggerServer.chord_response(socket_client, addr_client, data_dict)
             elif proto_rqst == LOGIN_REQUEST:
-                self.get_token(socket_client, addr_client, data_dict)
+                LoggerServer.get_token(socket_client, addr_client, data_dict)
             elif proto_rqst == LOGIN_RESPONSE: 
-                self.set_token(socket_client, addr_client, data_dict)
+                LoggerServer.set_token(socket_client, addr_client, data_dict)
         
         else: 
             pass
         #TODO error de tipo
         
 
-    def sign_up(self, socket_client, addr_client, data_dict):
+    def sign_up(socket_client, addr_client, data_dict):
         '''
         Registrar a un usuario en la red social
         ------------------------------------
@@ -85,7 +92,7 @@ class LoggerServer(Server):
             #Algun tipo de error de alias ya existente
             pass
     
-    def login_request(self, socket_client, addr_client, data_dict):
+    def login_request(socket_client, addr_client, data_dict):
         '''
         Solicitud de inicio de sesion de usuario
         -------------
@@ -111,7 +118,7 @@ class LoggerServer(Server):
         #Mandar el mensaje para iniciar el chord a la direccion que atiende esos pedidos
         self.chord_socket.send(util.encode(data))
     
-    def chord_response(self, socket_client, addr_client, data_dict):
+    def chord_response(socket_client, addr_client, data_dict):
         '''
         Contactar directamente con el Logger que contiene el loggeo de un usuario 
         -------------
@@ -133,7 +140,7 @@ class LoggerServer(Server):
         socket_client.send(util.encode(dict))
         socket_client.close()
 
-    def get_token(self, socket_client, addr_client, data_dict):
+    def get_token(socket_client, addr_client, data_dict):
         '''
         Loggear al usuario
         -------------
@@ -174,7 +181,7 @@ class LoggerServer(Server):
         socket_client.send(util.encode(dict))
         socket_client.close()
 
-    def set_token(self, socket_client, addr_client, data_dict):
+    def set_token(socket_client, addr_client, data_dict):
         
         Id = data_dict["ID_request"]
         try:
@@ -191,7 +198,7 @@ class LoggerServer(Server):
         except:
             pass
     
-    def alive_request(self, socket_client, addr_client, data_dict):
+    def alive_request(socket_client, addr_client, data_dict):
         dict = {
             'type': LOGGER,
             'proto': ALIVE_RESPONSE,
@@ -201,6 +208,6 @@ class LoggerServer(Server):
 
 
 class DataServer():
-    def share_info(self, socket_client, addr_client, data_dict):
-        hash_limit = data_dict['logguer_id']
+    def share_info(socket_client, addr_client, data_dict):
+        hash_limit = data_dict['logger_id']
           

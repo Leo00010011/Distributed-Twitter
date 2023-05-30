@@ -33,7 +33,7 @@ def test_printer(id,content,event:Event):
         print(f'worker_{id}' + content)
 
 class MultiThreadedServer:
-    def __init__(self,port: int, task_max: int, thread_count: int, timout: int, parse_func) -> None:
+    def __init__(self,port: int, task_max: int, thread_count: int, timout: int, parse_func):
         self.port = port
         self.task_max = task_max
         self.thread_count = thread_count
