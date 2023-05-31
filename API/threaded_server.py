@@ -1,9 +1,73 @@
 from queue import Queue, Empty
-from threading import Thread, Event
+from threading import Thread, Event, Lock
 import concurrent.futures
 from time import sleep
 from socket import socket, AF_INET, SOCK_STREAM
 
+def integer_numbers():
+    i = 0
+    while True:
+        yield i
+        i += 1
+
+
+class NumberGiver:
+    def __init__(self) -> None:
+        self.free_ids = []
+        self.iter = integer_numbers()
+        self.lock = Lock()
+    
+    def get_id(self):
+        new_id = None
+        self.lock.acquire()
+        if(len(self.free_ids) > 0):
+            new_id = self.free_ids.pop(0)
+        else:
+            new_id = next(self.iter)
+        self.lock.release()
+        return new_id
+
+    def put_id(self,old_id):
+        self.lock.acquire()
+        self.free_ids.append(old_id)
+        self.lock.release()
+
+class ThreadHolder:
+    def __init__(self,id: int,hold_event: Event = None):
+        self.id = id
+        self.hold_event = None
+        if not hold_event:
+            self.hold_event = Event()
+        else:
+            self.hold_event = hold_event
+        self.desired_data = None
+
+class StateStorage:
+    def __init__(self):
+        self.storage: dict[int,ThreadHolder] = {}
+        self.lock: Lock = Lock()
+        self.id_gen = NumberGiver()
+    
+    def insert_state(self):
+        id = self.id_gen.get_id()
+        state = ThreadHolder(id)
+        self.lock.acquire()
+        self.storage[state.id] = state
+        self.lock.release()
+        return state
+    
+    def delete_state(self,id):
+        self.lock.acquire()
+        item = self.storage.pop(id,None)
+        if item:
+            self.id_gen.put_id(id)
+        self.lock.release()
+    
+    def get_state(self,id):
+        self.lock.acquire()
+        value = self.storage.get(id,None)
+        self.lock.release()
+        return value
 
 def end_event_client(end_event: Event,port):
     end_event.wait()
