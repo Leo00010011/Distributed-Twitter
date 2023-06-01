@@ -1,4 +1,5 @@
 import peewee
+import hashlib
 from peewee import Model, SqliteDatabase, CharField, DateField, IntegerField, ForeignKeyField
 
 main_db = SqliteDatabase('social_network.db')
@@ -8,8 +9,8 @@ main_db = SqliteDatabase('social_network.db')
 class User(Model):
     name = CharField(120)
     alias = CharField(16, unique=True)
-    password = CharField(32)
-
+    password = CharField(41)
+    alias_hash = CharField(41)
     class Meta:
         database = main_db
 
@@ -19,7 +20,7 @@ class Follow(Model):
 
     class Meta:
         database = main_db 
-        indexes = (((follower, followed), True), )   
+        # indexes = (((follower, followed), True), )   
 
 class Tweet(Model):
     text = CharField(256)
@@ -34,7 +35,7 @@ class ReTweet(Model):
 
     class Meta:
         database = main_db
-        indexes = (((user, tweet), True), ) 
+        # indexes = (((user, tweet), True), ) 
 
 class Token(Model):
     user_id = ForeignKeyField(User)
@@ -44,4 +45,20 @@ class Token(Model):
         database = main_db
 
 # Ejecutar solo una primera vez para crear las tablas, luego comentar
-#db.create_tables([User, Sigue, Tweet, ReTweet])
+# main_db.create_tables([User, Follow, Tweet, ReTweet, Token])
+
+# x = User.select().offset(1)
+# for i,u in enumerate(x):
+#     print(u.name)
+# print(i)
+
+
+# print("Lexa_hash:" + str(hashlib.sha1(b'LachiD').hexdigest()))
+# print("LachiD_hash:" + str(hash('LachiD')))
+# print("Chino_hash:" + str(hash('Chino')))
+
+# User.create(name= 'Alejandra', alias='Lexa', password= 'Lucky**13',alias_hash= hashlib.sha1(b'Lexa').hexdigest())
+# User.create(name= 'Lazaro', alias='LachiD', password= 'lachiD', alias_hash = hashlib.sha1(b'LachiD').hexdigest())
+# User.create(name= 'Leonardo', alias='Chino', password= 'LeoUlloa',alias_hash= hashlib.sha1(b'Chino').hexdigest())
+
+# print('2b1b345dd3602f2643253a0a5c052a667e077255' >= 'a249c61954e68496e45683b0463f2b07a64dd835' )
