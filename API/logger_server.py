@@ -1,6 +1,7 @@
 import socket
 from socket import AF_INET, SOCK_STREAM
 from threading import Thread, Event
+import hashlib
 
 
 try:
@@ -8,6 +9,7 @@ try:
     from server import Server
     from util import Stalker, Dispatcher
     from util import CHORD, CLIENT, ENTRY_POINT, LOGGER,LOGIN_REQUEST, LOGIN_RESPONSE, NEW_LOGGER_RESPONSE, NEW_LOGGER_REQUEST, CHORD_RESPONSE, GET_TOKEN, CHORD_REQUEST, ALIVE_REQUEST, ALIVE_RESPONSE, REGISTER_REQUEST, REGISTER_RESPONSE
+    from util import TRANSFERENCE_REQUEST, TRANSFERENCE_RESPONSE, TRANSFERENCE_OVER
     import view
     from threaded_server import MultiThreadedServer
 except:
@@ -15,6 +17,7 @@ except:
     from API.server import Server
     from API.util import Stalker, Dispatcher
     from API.util import CHORD, CLIENT, ENTRY_POINT, LOGGER,LOGIN_REQUEST, LOGIN_RESPONSE, NEW_LOGGER_RESPONSE, NEW_LOGGER_REQUEST, CHORD_RESPONSE, GET_TOKEN, CHORD_REQUEST, ALIVE_REQUEST, ALIVE_RESPONSE, REGISTER_REQUEST, REGISTER_RESPONSE
+    from API.util import TRANSFERENCE_REQUEST, TRANSFERENCE_RESPONSE,TRANSFERENCE_OVER
     import API.view as view
     from API.threaded_server import MultiThreadedServer
 
@@ -25,7 +28,7 @@ class LoggerServer(MultiThreadedServer):
 
         MultiThreadedServer.__init__(self,port, task_max, thread_count, timout, LoggerServer.switch)
 
-    def switch(id:int, task: tuple[socket,object], event:Event):
+    def switch(id:int, task: tuple[socket,object], event:Event, storage):
         '''
         Interprete y verificador de peticiones generales.
         Revisa que la estructura de la peticion sea adecuada,
@@ -51,24 +54,33 @@ class LoggerServer(MultiThreadedServer):
             elif proto_rqst == NEW_LOGGER_RESPONSE: 
                 pass #TODO 
             elif proto_rqst == ALIVE_REQUEST:
-                pass #TODO
+                LoggerServer.alive_request(socket_client, addr_client, data_dict)
             elif proto_rqst == REGISTER_REQUEST:
-                pass #TODO
+                LoggerServer.register_request(socket_client, addr_client, data_dict, storage)
         
         elif type_rqst == LOGGER:
             if proto_rqst == CHORD_RESPONSE:
-                LoggerServer.chord_response(socket_client, addr_client, data_dict)
+                LoggerServer.chord_response(socket_client, addr_client, data_dict,storage)
             elif proto_rqst == LOGIN_REQUEST:
                 LoggerServer.get_token(socket_client, addr_client, data_dict)
             elif proto_rqst == LOGIN_RESPONSE: 
-                LoggerServer.set_token(socket_client, addr_client, data_dict)
-        
+                LoggerServer.set_token(socket_client, addr_client, data_dict,storage)
+            elif proto_rqst == REGISTER_REQUEST:
+                LoggerServer.get_register(socket_client, addr_client, data_dict)
+            elif proto_rqst == REGISTER_RESPONSE:
+                LoggerServer.set_register(socket_client, addr_client, data_dict, storage)
+            elif proto_rqst == TRANSFERENCE_REQUEST:
+                LoggerServer.data_transfer_request(socket_client, addr_client, data_dict)
+            elif proto_rqst == TRANSFERENCE_RESPONSE:
+                LoggerServer.data_transfer_response(socket_client, addr_client, data_dict)
+            elif proto_rqst == TRANSFERENCE_OVER:
+                LoggerServer.data_transfer_over(socket_client, addr_client, data_dict)
         else: 
             pass
         #TODO error de tipo
         
 
-    def sign_up(socket_client, addr_client, data_dict):
+    def register_request(socket_client, addr_client, data_dict, storage):
         '''
         Registrar a un usuario en la red social
         ------------------------------------
@@ -77,82 +89,211 @@ class LoggerServer(MultiThreadedServer):
         `data_dict['password']`: Contrasenna
         '''
   
-        nick = data_dict['nick']        
-        hashed = hash(nick)
+        #pedir un evento para m\'aquina de estado 
+        state = storage.insert_state()
+
+        #Hay que usar Chord para ver quien tiene a ese Nick
+        nick = data_dict['nick']
+        data = {
+                "type" : LOGGER,
+                "ptoto": CHORD_REQUEST,
+                "Hash": nick,
+                "ID_request": state.id,
+                "IP": self.socket_server
+        } #Construir la peticion del chord
+
+        skt = socket.socket(AF_INET,SOCK_STREAM)
+        skt.connect(('127.0.0.1',8023))
+        skt.send(util.encode(data))
         
-   
-        name = data_dict['name']
-        password = data_dict['password']
-        if view.CreateUser(name= name, alias=nick, password= password):
-            return True
-        else:
-            #Algun tipo de error de alias ya existente
-            pass
+        w = state.hold_event.wait(5)
+        state = storage.get_state(state.id)
+        storage.delete_state(state.id)
+
+        if w:
+            #Escribirle al server que tiene al usuario
+            state2 = storage.get_state()
+            data = {
+                "type": LOGGER,
+                "proto": REGISTER_REQUEST,
+                "nick": data_dict["nick"],
+                "password": data_dict["password"],
+                "ID_request": state2.id,
+            }
+            skt = socket.socket(AF_INET,SOCK_STREAM)
+            skt.connect((state.desired_data['IP'],8023))
+            skt.send(util.encode(data))
+
+            w = state2.event_holder.wait(5)
+            state = storage.get_state(state2.id)
+            storage.delete_state(state.id)
+            
+            if w:
+                #reenviar mensaje de autenticacion
+                try:
+                   data = {
+                    'type':LOGGER,
+                    'proto': REGISTER_RESPONSE,
+                    'succesed': state.desired_data['succesed'],
+                    'error': state.desired_data['error'],
+                   }
+                   socket_client.send(util.encode(data))
+                   socket_client.close()
+                except:
+                    pass
+
+        data = {
+                    'type':LOGGER,
+                    'proto': LOGIN_RESPONSE,
+                    'succesed': False,
+                    'token': None,
+                    'error': 'Something went wrong in the network connection',
+           }
+        socket_client.send(util.encode(data))
+        socket_client.close()
     
-    def login_request(socket_client, addr_client, data_dict):
+    def login_request(socket_client, addr_client, data_dict, storage):
         '''
         Solicitud de inicio de sesion de usuario
         -------------
         `data_dict['nick']`: Nick
         `data_dict['password']`: Contrasenna
         '''
-        #TODO pedir un evento para m\'aquina de estado 
-        event, Id = None, None
-        
+        #pedir un evento para m\'aquina de estado 
+        state = storage.insert_state()
+
         #Hay que usar Chord para ver quien tiene a ese Nick
         nick = data_dict['nick']
         data = {
                 "type" : LOGGER,
                 "ptoto": CHORD_REQUEST,
-                "Hash": hash(nick),
-                "ID_request": Id,
+                "Hash": nick,
+                "ID_request": state.id,
                 "IP": self.socket_server
         } #Construir la peticion del chord
         
-        self.chord_socket.send(util.encode(data))
-        w = event.wait(5)
+        skt = socket.socket(AF_INET,SOCK_STREAM)
+        skt.connect(('127.0.0.1',8023))
+        skt.send(util.encode(data))
+        
+        w = state.hold_event.wait(5)
+        state = storage.get_state(state.id)
+        storage.delete_state(state.id)
+        
         if w:
-            #TODO Escribirle al server que tiene al usuario
-            event, Id = None, None
+            #Escribirle al server que tiene al usuario
+            state2 = storage.get_state()
             data = {
                 "type": LOGGER,
                 "proto": LOGIN_REQUEST,
-                "nick": info["nick"],
-                "password": info["password"],
-                "ID_request": Id,
+                "nick": data_dict["nick"],
+                "password": data_dict["password"],
+                "ID_request": state2.id,
             }
-            w2 = event.wait(5)
-            if w2:
-                #TODO reenviar mensaje de autenticacion
-                socket_client.send(util.encode("ASK_DATA"))
-                socket_client.close()
+            skt = socket.socket(AF_INET,SOCK_STREAM)
+            skt.connect((state.desired_data['IP'],8023))
+            skt.send(util.encode(data))
 
-        #TODO enviar mensaje de red caida
+            w = state2.event_holder.wait(5)
+            state = storage.get_state(state2.id)
+            storage.delete_state(state.id)
+            
+            if w:
+                #reenviar mensaje de autenticacion
+                try:
+                   data = {
+                    'type':LOGGER,
+                    'proto': LOGIN_RESPONSE,
+                    'succesed': state.desired_data['succesed'],
+                    'token': state.desired_data['token'],
+                    'error': state.desired_data['error'],
+                   }
+                   socket_client.send(util.encode(data))
+                   socket_client.close()
+                except:
+                    pass
+
+        data = {
+                'type':LOGGER,
+                'proto': LOGIN_RESPONSE,
+                'succesed': False,
+                'token': None,
+                'error': 'Something went wrong in the network connection',
+           }
+        socket_client.send(util.encode(data))
+        socket_client.close()
 
 
+    def chord_response(socket_client, addr_client, data_dict, storage):
+        '''
+        Contactar directamente con el Logger que contiene el loggeo de un usuario 
+        -------------
+        `data_dict['IP']`: IP al que escribir
+        `data_dict['IDrequest']`: Configuracion del ususario
+        '''
 
-
-    # def chord_response(socket_client, addr_client, data_dict):
-    #     '''
-    #     Contactar directamente con el Logger que contiene el loggeo de un usuario 
-    #     -------------
-    #     `data_dict['IP']`: IP al que escribir
-    #     `data_dict['IDrequest']`: Configuracion del ususario
-    #     '''
-
-    #     IDrequest = data_dict["ID_request"]
-    #     _,_, info = self.list_clients_pasive_listen.get(IDrequest)
+        state = storage.get_state(data_dict['IDrequest'])
         
-    #     data = {
-    #         "type": LOGGER,
-    #         "proto": LOGIN_REQUEST,
-    #         "nick": info["nick"],
-    #         "password": info["password"],
-    #         "ID_request": self.socket_server,
-    #     }
 
-    #     socket_client.send(util.encode(dict))
-    #     socket_client.close()
+        data = {
+            "IP": data_dict['IP'],
+        }
+        state.desired_data = data
+        socket_client.close()
+        state.hold_event.set()
+
+    def get_register(socket_client, addr_client, data_dict):
+        '''
+        Registrar al usuario
+        -------------
+        `data_dict['nick']`: Nick
+        `data_dict['Password']`: Password
+        `data_dict['name']`: Name
+        ''' 
+        nick = data_dict['nick']
+        
+        if view.CheckUserAlias(nick) in None:
+            password = data_dict["password"]
+            name = data_dict['name']
+            try: 
+                view.CreateUser(name, nick, hashlib.sha1(bytes(password)).hexdigest(), hashlib.sha1(bytes(nick)).hexdigest())
+                data = {
+                    'type': LOGGER,
+                    'proto': REQUEST_RESPONSE,
+                    'succesed': True,
+                    'error': None,
+                    'ID_request': data_dict['ID_request']
+                }
+            except:
+                data = {
+                    'type': LOGGER,
+                    'proto': REQUEST_RESPONSE,
+                    'succesed': False,
+                    'error': 'Error trying to register',
+                    'ID_request': data_dict['ID_request']
+                }
+        else:
+            data = {
+                    'type': LOGGER,
+                    'proto': REQUEST_RESPONSE,
+                    'succesed': False,
+                    'error': 'User Nick must be unique',
+                    'ID_request': data_dict['ID_request']
+                }
+        
+        socket_client.send(util.encode(data))
+        socket_client.close()  
+
+    def set_register(socket_client, addr_client, data_dict, storage):
+        Id = data_dict["ID_request"]
+        state = storage.get_state(Id)
+        data = {
+            'succesed': data_dict['succesed'],
+            'error':data_dict['error'],
+           }
+        state.desired_data = data
+        state.hold_event.set()
+        socket_client.close()
 
     def get_token(socket_client, addr_client, data_dict):
         '''
@@ -164,9 +305,9 @@ class LoggerServer(MultiThreadedServer):
         nick = data_dict["nick"]
         password = data_dict["password"]
         try:
-            Token = view.LogIn(nick, password)
+            Token = view.LogIn(nick,hashlib.sha1(bytes(password)).hexdigest())
             if Token:
-                dict ={
+                data={
                     'type': LOGGER,
                     'proto': LOGIN_RESPONSE,
                     'succesed': True,
@@ -175,7 +316,7 @@ class LoggerServer(MultiThreadedServer):
                     'ID_request': data_dict['ID_request']
                 }
             else:
-                dict ={
+                data={
                     'type': LOGGER,
                     'proto': LOGIN_RESPONSE,
                     'succesed': False,
@@ -184,7 +325,7 @@ class LoggerServer(MultiThreadedServer):
                     'ID_request': data_dict['ID_request']
                 }     
         except:
-                dict ={
+                data={
                     'type': LOGGER,
                     'proto': LOGIN_RESPONSE,
                     'succesed': False,
@@ -193,40 +334,101 @@ class LoggerServer(MultiThreadedServer):
                     'ID_request': data_dict['ID_request']
                 }
         
-        #TODO llamar al evento para hacerle set 
-        #TODO poner los datos en donde van
-        event = None
-        event.set()
-        # socket_client.send(util.encode(dict))
-        # socket_client.close()
+        socket_client.send(util.encode(data))
+        socket_client.close()
 
-    def set_token(socket_client, addr_client, data_dict):
+    def set_token(socket_client, addr_client, data_dict, storage):
         
         Id = data_dict["ID_request"]
-        try:
-           socket,_,_ =  self.list_clients_pasive_listen.pop(Id)
-           dict = {
-            'type':LOGGER,
-            'proto': LOGIN_RESPONSE,
+        state = storage.get_state(Id)
+        data = {
             'succesed': data_dict['succesed'],
             'token': data_dict['token'],
             'error':data_dict['error'],
            }
-           socket.send(util.encode(dict))
-           socket.close()
-        except:
-            pass
+        state.desired_data = data
+        state.hold_event.set()
+        socket_client.close()
     
     def alive_request(socket_client, addr_client, data_dict):
-        dict = {
+        data = {
             'type': LOGGER,
             'proto': ALIVE_RESPONSE,
+            'IP': self.IP
         }
-        socket_client.send(util.encode(dict))
+        socket_client.send(util.encode(data))
         socket_client.close()
 
+    def data_transfer_request(socket_client, addr_client, data_dict):
+        """
+        Peticion de transferencia de datos
+        datadict['number']: Numero de bloques enviados y recibidos
+        datadict['chord_id']: Nuemro a partir del cual buscar
+        """
+
+        number = data_dict['number']
+        hash_limit = data_dict['chord_id']
+
+        user_data = view.GetUserPaswordRange(hash_limit, (number+1) * 10,10)
+        data = {
+            'type': LOGGER,
+            'proto': TRANSFERENCE_RESPONSE,
+            'number': number +1,
+            'chord_id': hash_limit
+        }
+
+        i = 0
+        for user in user_data:
+            data[f"name_{i}"] = user.name
+            data[f'password_{i}'] = user.password
+            data[f"nick_{i}"] = user.alias
+            i+=1
+        
+        if i < 10:
+            data['over'] = True
+        else: 
+            data['over'] = False
+
+        socket_client.send(util.encode(data))
+        socket_client.close()
+
+    def data_transfer_response(socket_client, addr_client, data_dict):        
+        
+        for i in range(10):
+            name = data_dict.get(f'name_{i}', None)
+            password = data_dict.get(f'password_{i}', None)
+            nick = data_dict.get(f'nick_{i}', None)
+
+            if name is None or password is None or nick is None: break
+
+            view.CreateUser(name, nick, password, hashlib.sha1(bytes(nick)).hexdigest())
+
+        if data_dict['over']:
+            data = {
+                'type': LOGGER,
+                'proto': TRANSFERENCE_OVER,
+                'chord_id': data_dict['chord_id'],
+                'replication': False
+            }
+        else:
+            data = {
+                'type': LOGGER,
+                'proto': TRANSFERENCE_REQUEST,
+                'chord_id': data_dict['chord_id'],
+                'number':data_dict['number']
+            }
+        socket_client.send(util.encode(data))
+        socket_client.close()
+            
+    def data_transfer_over(socket_client, addr_client, data_dict):
+        if not data_dict['replication']:
+            limit  = data_dict['chord_id']
+            view.DeleteUserRange(limit)
+        
+        socket_client.close()
 
 class DataServer():
     def share_info(socket_client, addr_client, data_dict):
         hash_limit = data_dict['logger_id']
+
           

@@ -12,7 +12,7 @@ def integer_numbers():
 
 
 class NumberGiver:
-    def __init__(self) -> None:
+    def __init__(self):
         self.free_ids = []
         self.iter = integer_numbers()
         self.lock = Lock()
@@ -98,7 +98,7 @@ def test_printer(id,content,event:Event):
 
 class MultiThreadedServer:
     def __init__(self,port: int, task_max: int, thread_count: int, timeout: int, parse_func):
-        self.port = port
+    
         self.task_max = task_max
         self.thread_count = thread_count
         self.timeout = timeout

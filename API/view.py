@@ -6,9 +6,9 @@ except:
     from API.util import gen_token
 # Consultas
 
-def CreateUser(name, alias, password):
+def CreateUser(name, alias, password, alias_hash):
     try:
-        User.create(name= name, alias=alias, password=password)
+        User.create(name= name, alias=alias, password=password, alias_hash = alias_hash)
         return True
     except:
         return False
@@ -16,7 +16,7 @@ def CreateUser(name, alias, password):
 def CheckUserAlias(alias):
     '''
     Devualve el ID del Usuario asignado al Alias
-    En caso de no ser enconteado devuelve None
+    En caso de no ser encontrado devuelve None
     '''
     try:
         return User.select().where(User.alias == alias).get()
@@ -94,7 +94,9 @@ def CreateReTweet(user_id, tweet_id):
         return False
 
 
-def GetUserPaswordRange(hash_limit):
-    User.select().where(User.alias <= hash_limit).orederby(User.alias).limit(10)
+def GetUserPaswordRange(hash_limit, offset, limit):
+    return User.select().where(User.alias_hash <= hash_limit).oreder_by(User.alias).offset(offset).limit(limit)
 
 
+def DeleteUserRange(hash_limit):
+    User.delte().where(User.alias_hash <= hash_limit)
