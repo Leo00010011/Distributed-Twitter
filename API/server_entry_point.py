@@ -38,7 +38,7 @@ class EntryPointServerTheaded(MultiThreadedServer):
     def switch(self, id:int,task: tuple[socket,object],event:Event):
 
         try:
-            data_bytes = socket.recv(1024)
+            data_bytes = socket.recv(10240)
             data_dict = util.decode(data_bytes)
             type_msg = data_dict["type"]
             protocol = data_dict["proto"]
@@ -76,7 +76,7 @@ class EntryPointServerTheaded(MultiThreadedServer):
 
         s = socket.socket(AF_INET, SOCK_STREAM)
         ip_logger = self.dispatcher()
-        s.connect((ip_logger, 8040))
+        s.connect((ip_logger, PORT_GENERAL_LOGGER))
         data_bytes = util.encode(message)
         s.send(data_bytes)
         # new_data_bytes = s.recv(1024)
@@ -144,7 +144,7 @@ class EntryPointServerTheaded(MultiThreadedServer):
 
         s = socket.socket(AF_INET, SOCK_STREAM)
         ip_logger = self.dispatcher()
-        s.connect((ip_logger, 8040))
+        s.connect((ip_logger, PORT_GENERAL_LOGGER))
         data_bytes = util.encode(message)
         s.send(data_bytes)
         # new_data_bytes = s.recv(1024)
@@ -276,3 +276,75 @@ class EntryPointServerTheaded(MultiThreadedServer):
         state.desired_data = data
         state.hold_event.set()
 
+
+    #-------------------- PROFILE ----------------------#
+
+    def profile_request_from_client(self, id:int,task: tuple[socket,object],event:Event, data: dict):        
+
+        token = data['token']
+        nick = data['nick']
+        nick_profile = data['nick_profile']
+        block = data['block']
+
+        state = self.storage.insert_state()
+        message = {
+            'type': ENTRY_POINT,
+            'proto': PROFILE_REQUEST,
+            'token': token,
+            'nick': nick,
+            'nick_profile': nick_profile,
+            'block': block,
+            'id_request': state.id
+        }
+
+        s = socket.socket(AF_INET, SOCK_STREAM)
+        ip_logger = self.dispatcher()
+        s.connect((ip_logger, PORT_GENERAL_LOGGER))
+        data_bytes = util.encode(message)
+        s.send(data_bytes)
+        #new_data_bytes = s.recv(1024)
+        s.close()
+
+        if event.wait(10):
+            state = self.storage.get_state(state.id)
+            if state is None:
+                #TODO ver que pasa aqui !!!!!!!!!!
+                task[0].close()
+                return
+
+            if state.desired_data['succesed']:
+                msg = {
+                    'type': ENTRY_POINT,
+                    'proto': PROFILE_RESPONSE,
+                    'succesed': True,
+                    'data_profile': state.desired_data['data_profile'],
+                    'error': None
+                }
+            else:
+                msg = {
+                    'type': ENTRY_POINT,
+                    'proto': PROFILE_RESPONSE,
+                    'succesed': False,                    
+                    'error': state.desired_data['error'],
+                    'data_profile': None
+                }
+        else:
+            msg = {
+                'type': ENTRY_POINT,
+                'proto': PROFILE_RESPONSE,
+                'succesed': False,                
+                'error': 'Tiempo de espera agotado.',
+                'data_profile': None
+            }
+
+        task[0].send(util.encode(msg))
+        task[0].close()
+        self.storage.delete_state(state.id)
+
+    def profile_response_from_logger(self, id:int,task: tuple[socket,object],event:Event, data: dict):
+
+        self.stalker_loggers.update_IP(task[1][0])
+        state = self.storage.get_state(data['id_request'])
+        task[0].close()
+        state.desired_data = data
+        state.hold_event.set()

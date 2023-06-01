@@ -128,14 +128,15 @@ class Client():
             # print('Que mierda me respondieron?')
             return False, 'Que mierda me respondieron?'
 
-    def profile(self, nick_profile, token, nick):
+    def profile(self, nick_profile, token, nick, block):
 
         msg = {
             'type': CLIENT,
             'proto': PROFILE_REQUEST,
             'token': token,
             'nick': nick,
-            'nick_profile': nick_profile
+            'nick_profile': nick_profile,
+            'block': block
         }
 
         #TODO Falta agregar un try para cuando se vaya la conexion
@@ -146,8 +147,8 @@ class Client():
         recv_bytes = s.recv()
         recv_data = util.decode(recv_bytes)
         if recv_data['proto'] == PROFILE_RESPONSE:
-            if recv_data['succesed']:                
-                return True, None
+            if recv_data['succesed']:
+                return True, recv_data['data_profile']
             else:
                 # print(recv_data['error'])
                 return False, recv_data['error']
