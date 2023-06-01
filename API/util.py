@@ -70,7 +70,7 @@ class Stalker:
     '''
     Estructura que guarda una lista de IP:Puertos (o Puertos),
     con la ultima hora de actividad. Recomienda de forma aleatoria un IP
-    para verificar si est'a vivo a'un, pero d'ando mas probabilidad a los
+    para verificar si est'a vivo a'un, pero dando mas probabilidad a los
     IP menos actualizados.
     '''
     def __init__(self, type):
@@ -94,7 +94,7 @@ class Stalker:
         con el tiempo actual. Si no est'a, se a~nade nuevo.
         '''
         for i, item in enumerate(self.list):
-            if item == dir:
+            if item[1] == dir:
                 self.list[i] = (time.time(), dir)
                 self.list.sort()
                 return
@@ -106,7 +106,7 @@ class Stalker:
         se retorna None
         '''
         for i, item in enumerate(self.list):
-            if item == dir:
+            if item[1] == dir:
                 return self.list.pop(i)
         return None
     

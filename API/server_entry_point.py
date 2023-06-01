@@ -1,43 +1,39 @@
 import socket
-from socket import AF_INET, SOCK_STREAM
-from threading import Thread
+from socket import AF_INET, SOCK_STREAM, socket
+from threading import Thread, Event
+import random as rand
 
 try:
     import util
+    from threaded_server import MultiThreadedServer
     from server import Server
     from util import Stalker, Dispatcher
     from util import CLIENT, ENTRY_POINT, LOGGER,LOGIN_REQUEST, LOGIN_RESPONSE, NEW_LOGGER_RESPONSE, NEW_LOGGER_REQUEST
     import view
 except:
     import API.util as util
+    from API.threaded_server import MultiThreadedServer
     from API.server import Server
     from API.util import Stalker, Dispatcher
     from API.util import CLIENT, ENTRY_POINT, LOGGER,LOGIN_REQUEST, LOGIN_RESPONSE
     import API.view as view
+    
+class EntryPointServerTheaded(MultiThreadedServer):
 
-class EntryPointServer(Server):
+    def __init__(self, port: int, task_max: int, thread_count: int, timeout: int, parse_func):
+        super().__init__(port, task_max, thread_count, timeout, parse_func)
+        self.stalker_loggers = Stalker(ENTRY_POINT)                        
 
-    def __init__(self):
-        Server.__init__(self)
-        self.ID_actual = 0
-        self.loggers_list = []
-        self.entry_points = []
-        self.dispatcher = Dispatcher()
-        self.stalker = Stalker(ENTRY_POINT)
+    def dispatcher(self):
+        l = self.stalker_loggers.list
+        i = rand.randint(0,min(len(l),5))
+        return self.stalker_loggers[i][1]
 
-        
+    def switch(self, id:int,task: tuple[socket,object],event:Event):
 
-    def switch(self, socket_client, addr_client, data_bytes):
-        '''
-        Interprete y verificador de peticiones generales.
-        Revisa que la estructura de la peticion sea adecuada,
-        e interpreta la orden dada, redirigiendo el flujo de
-        ejecucion interno del Server.
-        ---------------------------------------
-        `data_bytes['type']`: Tipo de peticion
-        '''
         try:
-            data_dict = util.decode(data_bytes)        
+            data_bytes = socket.recv(1024)
+            data_dict = util.decode(data_bytes)
             type_msg = data_dict["type"]
             protocol = data_dict["proto"]
             data = data_dict["data"]
@@ -47,100 +43,99 @@ class EntryPointServer(Server):
         
         if type_msg == CLIENT:
             if protocol == LOGIN_REQUEST:
-                self.login_request_from_client(socket_client, addr_client, data)
+                self.login_request_from_client(id, task, event, data)
         elif type_msg == ENTRY_POINT:
             pass
         elif type_msg == LOGGER:
             if protocol == LOGIN_RESPONSE:
-                self.login_response_from_logger(socket_client, addr_client, data)
+                self.login_response_from_logger(id, task, event, data)
             elif protocol == NEW_LOGGER_REQUEST:
                 self.new_logger_request_from_logger(socket_client, addr_client, data)
         else:
             pass
 
-#   ---------     RECV MESSAGE     -----------   #
+    def login_request_from_client(self, id:int,task: tuple[socket,object],event:Event, data: dict):        
 
-    def login_request_from_client(self, socket_client, addr_client, data_dict):
-        nick = data_dict['nick']
-        password = data_dict['password']
+        nick = data['nick']
+        password = data['password']
 
-        id  = self.dispatcher.insert_petition(0)
-
+        state = self.storage.insert_state()
         message = {
             'type': ENTRY_POINT,
             'proto': LOGIN_REQUEST,
             'nick': nick,
             'password': password,
-            'ID_request': id
+            'id_request': state.id
         }
-        try:
-            new_data_dict = self.login_request_to_logger(message)
-            if new_data_dict['succesed'] == False:
+
+        s = socket.socket(AF_INET, SOCK_STREAM)
+        ip_logger = self.dispatcher()
+        s.connect((ip_logger, 8040))
+        data_bytes = util.encode(message)
+        s.send(data_bytes)
+        new_data_bytes = s.recv(1024)
+        s.close()
+
+        if event.wait(10):
+            state = self.storage.get_state(state.id)
+            if state is None:
+                #TODO ver que pasa aqui !!!!!!!!!!
+                task[0].close()
+                return
+
+            if state.desired_data['succesed']:
+                msg = {
+                    'type': ENTRY_POINT,
+                    'proto': LOGIN_RESPONSE,
+                    'succesed': True,
+                    'token': state.desired_data['token'],
+                    'error': None
+                }
+            else:
                 msg = {
                     'type': ENTRY_POINT,
                     'proto': LOGIN_RESPONSE,
                     'succesed': False,
                     'token': None,
-                    'error': 'No existe'
+                    'error': state.desired_data['error']
                 }
-            else :
-                msg = {
-                    'type': ENTRY_POINT,
-                    'proto': LOGIN_RESPONSE,
-                    'succesed': True,
-                    'token': new_data_dict['token'],
-                    'error': None
-                }
-        except Exception as e:
+        else:
             msg = {
                 'type': ENTRY_POINT,
                 'proto': LOGIN_RESPONSE,
                 'succesed': False,
                 'token': None,
-                'error': 'Conexion cerrada'
-            }            
-        socket_client.send(util.encode(msg))
-        socket_client.close()        
-        
+                'error': 'Tiempo de espera agotado.'
+            }
+
+        task[0].send(util.encode(msg))
+        task[0].close()
+        self.storage.delete_state(state.id)
+
+    def login_response_from_logger(self, id:int,task: tuple[socket,object],event:Event, data: dict):
+
+        self.stalker_loggers.update_IP(task[1][0])
+        state = self.storage.get_state(data['id_request'])
+        task[0].close()
+        state.desired_data = data
+        state.hold_event.set()
 
 
-    def login_response_from_logger(self, socket_client, addr_client, data_dict):
-        # Esto no lo deb'ia recibir abiertamente.
-        self.dispatcher.extract_petition(data_dict['id_request'])
+    def new_logger_request_from_logger(self, id:int,task: tuple[socket,object],event:Event, data: dict):
+
+        IP_origin = data['IP_origin']
+        self.stalker_loggers.extract_IP(task[1][0])
+        ip_logger = self.stalker_loggers.recommended_dir()
+        self.stalker_loggers.update_IP(task[1][0])
+
         msg = {
                 'type': ENTRY_POINT,
-                'proto': LOGIN_RESPONSE,
-                'succesed': False,
-                'token': None,
-                'error': 'Socket equivocado'
-            } 
-        socket_client.send(util.encode(msg))
-        socket_client.close()   
-
-    def new_logger_request_from_logger(self, socket_client, addr_client, data_dict):
-        IP_origin = data_dict['IP_origin']
-
-        self.stalker.update_IP(addr_client)
-
-
-
-
-#   ---------     SEND MESSAGE     -----------   #
-
-    def login_request_to_logger(self, data_dict):
-        s = socket.socket(AF_INET, SOCK_STREAM)
-        s.connect((self.HOST, 8040))
-        data_bytes = util.encode(data_dict)
-        s.send(data_bytes)        
-        new_data_bytes = s.recv(1024)
-        s.close()
-        new_data = util.decode(new_data_bytes)
+                'proto': NEW_LOGGER_RESPONSE,
+                'ip': ip_logger
+            }
         
-        return new_data
+        task[0].send(util.encode(msg))
+        task[0].close()
+        
 
-    def login_response_to_client(self):
-        pass
 
-    def new_logger_response_to_logger(self):
-        pass
-    
