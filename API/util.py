@@ -11,8 +11,6 @@ alphabet = string.ascii_letters + string.digits
 CLIENT = 0
 ENTRY_POINT = 1
 LOGGER = 2
-DATA_BASE = 3
-CHORD = 4
 
 # Protocolos de pedidos
 LOGIN_REQUEST = 0
@@ -32,7 +30,7 @@ TRANSFERENCE_OVER = 12
 
 
 # Puertos de escucha
-PORT_GENERAL = 8069
+PORT_GENERAL_ENTRY = 8069
 
 
 def encode(data_dict):
