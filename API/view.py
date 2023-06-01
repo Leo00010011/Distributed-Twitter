@@ -77,9 +77,11 @@ def RemoveToken(user_id, token):
     '''
     Token.delete().where(Token.token == token, Token.id == user_id).execute()
 
-def CreateTweet(token, text):
+def CreateTweet(token, text, nick):
+
     user_id = CheckToken(token)
     if user_id:
+        if User.select().where(User.alias == nick).get().id != user_id: return False
         Tweet.create(user_id= user_id, text= text)
         return True
     else:

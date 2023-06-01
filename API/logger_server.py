@@ -97,7 +97,7 @@ class LoggerServer(MultiThreadedServer):
         data = {
                 "type" : LOGGER,
                 "ptoto": CHORD_REQUEST,
-                "Hash": nick,
+                "hash": nick,
                 "ID_request": state.id,
                 "IP": self.socket_server
         } #Construir la peticion del chord
