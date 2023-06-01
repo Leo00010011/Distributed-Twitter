@@ -8,14 +8,20 @@ try:
     from threaded_server import MultiThreadedServer
     from server import Server
     from util import Stalker, Dispatcher
-    from util import CLIENT, ENTRY_POINT, LOGGER,LOGIN_REQUEST, LOGIN_RESPONSE, NEW_LOGGER_RESPONSE, NEW_LOGGER_REQUEST, REGISTER_RESPONSE, REGISTER_REQUEST
+    from util import PORT_GENERAL_ENTRY, PORT_GENERAL_LOGGER
+    from util import CLIENT, ENTRY_POINT, LOGGER,LOGIN_REQUEST, LOGIN_RESPONSE,\
+        NEW_LOGGER_RESPONSE, NEW_LOGGER_REQUEST, REGISTER_RESPONSE, REGISTER_REQUEST,\
+        CREATE_TWEET_REQUEST, CREATE_TWEET_RESPONSE, PROFILE_REQUEST, PROFILE_RESPONSE
     import view
 except:
     import API.util as util
     from API.threaded_server import MultiThreadedServer
     from API.server import Server
     from API.util import Stalker, Dispatcher
-    from API.util import CLIENT, ENTRY_POINT, LOGGER,LOGIN_REQUEST, LOGIN_RESPONSE, NEW_LOGGER_RESPONSE, NEW_LOGGER_REQUEST, REGISTER_RESPONSE, REGISTER_REQUEST
+    from API.util import PORT_GENERAL_ENTRY, PORT_GENERAL_LOGGER
+    from API.util import CLIENT, ENTRY_POINT, LOGGER,LOGIN_REQUEST, LOGIN_RESPONSE,\
+        NEW_LOGGER_RESPONSE, NEW_LOGGER_REQUEST, REGISTER_RESPONSE, REGISTER_REQUEST,\
+        CREATE_TWEET_REQUEST, CREATE_TWEET_RESPONSE, PROFILE_REQUEST, PROFILE_RESPONSE
     import API.view as view
     
 class EntryPointServerTheaded(MultiThreadedServer):
@@ -50,7 +56,7 @@ class EntryPointServerTheaded(MultiThreadedServer):
             if protocol == LOGIN_RESPONSE:
                 self.login_response_from_logger(id, task, event, data)
             elif protocol == NEW_LOGGER_REQUEST:
-                self.new_logger_request_from_logger(socket_client, addr_client, data)
+                self.new_logger_request_from_logger(id, task, event, data)
         else:
             pass
 
@@ -73,7 +79,7 @@ class EntryPointServerTheaded(MultiThreadedServer):
         s.connect((ip_logger, 8040))
         data_bytes = util.encode(message)
         s.send(data_bytes)
-        new_data_bytes = s.recv(1024)
+        # new_data_bytes = s.recv(1024)
         s.close()
 
         if event.wait(10):
@@ -141,7 +147,7 @@ class EntryPointServerTheaded(MultiThreadedServer):
         s.connect((ip_logger, 8040))
         data_bytes = util.encode(message)
         s.send(data_bytes)
-        new_data_bytes = s.recv(1024)
+        # new_data_bytes = s.recv(1024)
         s.close()
 
         if event.wait(10):
@@ -203,4 +209,70 @@ class EntryPointServerTheaded(MultiThreadedServer):
         task[0].close()
         
 
+    #-------------------- CREATE TWEET ----------------------#
+
+    def create_tweet_request_from_client(self, id:int,task: tuple[socket,object],event:Event, data: dict):        
+
+        token = data['token']
+        nick = data['nick']
+        text = data['text']
+
+        state = self.storage.insert_state()
+        message = {
+            'type': ENTRY_POINT,
+            'proto': CREATE_TWEET_REQUEST,
+            'token': token,
+            'nick': nick,   
+            'text': text,
+            'id_request': state.id
+        }
+
+        s = socket.socket(AF_INET, SOCK_STREAM)
+        ip_logger = self.dispatcher()
+        s.connect((ip_logger, PORT_GENERAL_LOGGER))
+        data_bytes = util.encode(message)
+        s.send(data_bytes)
+        #new_data_bytes = s.recv(1024)
+        s.close()
+
+        if event.wait(10):
+            state = self.storage.get_state(state.id)
+            if state is None:
+                #TODO ver que pasa aqui !!!!!!!!!!
+                task[0].close()
+                return
+
+            if state.desired_data['succesed']:
+                msg = {
+                    'type': ENTRY_POINT,
+                    'proto': CREATE_TWEET_RESPONSE,
+                    'succesed': True,                    
+                    'error': None
+                }
+            else:
+                msg = {
+                    'type': ENTRY_POINT,
+                    'proto': CREATE_TWEET_RESPONSE,
+                    'succesed': False,                    
+                    'error': state.desired_data['error']
+                }
+        else:
+            msg = {
+                'type': ENTRY_POINT,
+                'proto': CREATE_TWEET_RESPONSE,
+                'succesed': False,                
+                'error': 'Tiempo de espera agotado.'
+            }
+
+        task[0].send(util.encode(msg))
+        task[0].close()
+        self.storage.delete_state(state.id)
+
+    def create_tweet_response_from_logger(self, id:int,task: tuple[socket,object],event:Event, data: dict):
+
+        self.stalker_loggers.update_IP(task[1][0])
+        state = self.storage.get_state(data['id_request'])
+        task[0].close()
+        state.desired_data = data
+        state.hold_event.set()
 
