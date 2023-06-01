@@ -4,6 +4,7 @@ import secrets
 import time
 import heapq
 import random
+import os
 
 alphabet = string.ascii_letters + string.digits
 
@@ -139,3 +140,10 @@ class Stalker:
             'proto': 1000, # Definir el protocolo de estar vivo.
         }
         return msg
+
+
+def clear():
+    if os.name == "nt":
+        os.system("cls")
+    else:
+        os.system("clear")
