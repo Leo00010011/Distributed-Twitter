@@ -64,11 +64,11 @@ class LoggerServer(MultiThreadedServer):
             elif proto_rqst == LOGIN_REQUEST:
                 LoggerServer.get_token(socket_client, addr_client, data_dict)
             elif proto_rqst == LOGIN_RESPONSE: 
-                LoggerServer.set_token(socket_client, addr_client, data_dict,storage)
+                LoggerServer.set_data(socket_client, addr_client, data_dict,storage)
             elif proto_rqst == REGISTER_REQUEST:
                 LoggerServer.get_register(socket_client, addr_client, data_dict)
             elif proto_rqst == REGISTER_RESPONSE:
-                LoggerServer.set_register(socket_client, addr_client, data_dict, storage)
+                LoggerServer.set_data(socket_client, addr_client, data_dict, storage)
             elif proto_rqst == TRANSFERENCE_REQUEST:
                 LoggerServer.data_transfer_request(socket_client, addr_client, data_dict)
             elif proto_rqst == TRANSFERENCE_RESPONSE:
@@ -131,14 +131,8 @@ class LoggerServer(MultiThreadedServer):
             if w:
                 #reenviar mensaje de autenticacion
                 try:
-                   data = {
-                    'type':LOGGER,
-                    'proto': REGISTER_RESPONSE,
-                    'succesed': state.desired_data['succesed'],
-                    'error': state.desired_data['error'],
-                   }
-                   socket_client.send(util.encode(data))
-                   socket_client.close()
+                    socket_client.send(util.encode(state.desired_data))
+                    socket_client.close()
                 except:
                     pass
 
@@ -201,14 +195,7 @@ class LoggerServer(MultiThreadedServer):
             if w:
                 #reenviar mensaje de autenticacion
                 try:
-                   data = {
-                    'type':LOGGER,
-                    'proto': LOGIN_RESPONSE,
-                    'succesed': state.desired_data['succesed'],
-                    'token': state.desired_data['token'],
-                    'error': state.desired_data['error'],
-                   }
-                   socket_client.send(util.encode(data))
+                   socket_client.send(util.encode(state.desired_data))
                    socket_client.close()
                 except:
                     pass
@@ -284,14 +271,11 @@ class LoggerServer(MultiThreadedServer):
         socket_client.send(util.encode(data))
         socket_client.close()  
 
-    def set_register(socket_client, addr_client, data_dict, storage):
+    def set_data(socket_client, addr_client, data_dict, storage):
         Id = data_dict["ID_request"]
         state = storage.get_state(Id)
-        data = {
-            'succesed': data_dict['succesed'],
-            'error':data_dict['error'],
-           }
-        state.desired_data = data
+   
+        state.desired_data = data_dict
         state.hold_event.set()
         socket_client.close()
 
@@ -337,18 +321,7 @@ class LoggerServer(MultiThreadedServer):
         socket_client.send(util.encode(data))
         socket_client.close()
 
-    def set_token(socket_client, addr_client, data_dict, storage):
-        
-        Id = data_dict["ID_request"]
-        state = storage.get_state(Id)
-        data = {
-            'succesed': data_dict['succesed'],
-            'token': data_dict['token'],
-            'error':data_dict['error'],
-           }
-        state.desired_data = data
-        state.hold_event.set()
-        socket_client.close()
+
     
     def alive_request(socket_client, addr_client, data_dict):
         data = {
