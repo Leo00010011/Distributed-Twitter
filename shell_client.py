@@ -67,7 +67,7 @@ class ShellClient():
                     pass
                 # Crear Dweet
                 elif args[0] == "2" and len(args) == 1:
-                    pass
+                    self.create_tweet()
                 # Crear ReDweet
                 elif args[0] == "3" and len(args) == 1:
                     pass
@@ -82,9 +82,9 @@ class ShellClient():
                     pass
                 # Cerrar Sesion
                 elif args[0] == "7" and len(args) == 1:
-                    exit()
+                    pass
                 # Salir
-                elif args[0] == "8" and len(args) == 1:
+                elif args[0] == "8" and len(args) == 1:                    
                     exit()
                 else:
                     pass
@@ -205,6 +205,32 @@ class ShellClient():
             print('Pulse ENTER para ver otro perfil, o escriba "q" para volver al menu principal')
             if input() == 'q':
                 break
+
+    def follow(self):        
+
+        while True:
+            util.clear()
+            self.print_Dwitter()
+            print()
+            print('<--- Seguir Perfil --->')
+            print('Paso 1: Ingrese el Nick del Usuario')
+            print('> ', end='')
+            nick = input()
+
+            succesed, error = self.client.follow(nick, self.token, self.nick)
+            if succesed:
+                print(f'Comenzo a seguir a "{nick}" CON EXITO!!!')
+                print('Pulse ENTER para volver a intentar, o escriba "q" para volver al menu principal')
+                input()
+                return
+            else:
+                print('Ha ocurrido un ERROR :"(')
+                print('<+++++ Error +++++>')
+                print(error)
+                print('<+++++|+++++|+++++>')
+                print('Pulse ENTER para volver a intentar, o escriba "q" para volver al menu principal')
+                if input() == 'q':
+                    return
 
     def create_tweet(self):
         util.clear()

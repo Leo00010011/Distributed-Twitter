@@ -11,7 +11,8 @@ try:
     from util import PORT_GENERAL_ENTRY, PORT_GENERAL_LOGGER
     from util import CLIENT, ENTRY_POINT, LOGGER,LOGIN_REQUEST, LOGIN_RESPONSE,\
         NEW_LOGGER_RESPONSE, NEW_LOGGER_REQUEST, REGISTER_RESPONSE, REGISTER_REQUEST,\
-        CREATE_TWEET_REQUEST, CREATE_TWEET_RESPONSE, PROFILE_REQUEST, PROFILE_RESPONSE
+        CREATE_TWEET_REQUEST, CREATE_TWEET_RESPONSE, PROFILE_REQUEST, PROFILE_RESPONSE,\
+        FOLLOW_REQUEST,FOLLOW_RESPONSE
     import view
 except:
     import API.util as util
@@ -21,7 +22,8 @@ except:
     from API.util import PORT_GENERAL_ENTRY, PORT_GENERAL_LOGGER
     from API.util import CLIENT, ENTRY_POINT, LOGGER,LOGIN_REQUEST, LOGIN_RESPONSE,\
         NEW_LOGGER_RESPONSE, NEW_LOGGER_REQUEST, REGISTER_RESPONSE, REGISTER_REQUEST,\
-        CREATE_TWEET_REQUEST, CREATE_TWEET_RESPONSE, PROFILE_REQUEST, PROFILE_RESPONSE
+        CREATE_TWEET_REQUEST, CREATE_TWEET_RESPONSE, PROFILE_REQUEST, PROFILE_RESPONSE,\
+        FOLLOW_REQUEST,FOLLOW_RESPONSE
     import API.view as view
     
 class EntryPointServerTheaded(MultiThreadedServer):
@@ -50,15 +52,31 @@ class EntryPointServerTheaded(MultiThreadedServer):
         if type_msg == CLIENT:
             if protocol == LOGIN_REQUEST:
                 self.login_request_from_client(id, task, event, data)
+            elif protocol == REGISTER_REQUEST:
+                self.register_request_from_client(id, task, event, data)
+            elif protocol == CREATE_TWEET_REQUEST:
+                self.create_tweet_request_from_client(id, task, event, data)
+            elif protocol == PROFILE_REQUEST:
+                self.profile_request_from_client(id, task, event, data)
+            else:
+                print('Q pifia metes?')
         elif type_msg == ENTRY_POINT:
             pass
         elif type_msg == LOGGER:
             if protocol == LOGIN_RESPONSE:
                 self.login_response_from_logger(id, task, event, data)
-            elif protocol == NEW_LOGGER_REQUEST:
-                self.new_logger_request_from_logger(id, task, event, data)
+            elif protocol == REGISTER_RESPONSE:
+                self.register_response_from_logger(id, task, event, data)
+            elif protocol == CREATE_TWEET_RESPONSE:
+                self.create_tweet_response_from_logger(id, task, event, data)
+            elif protocol == PROFILE_RESPONSE:
+                self.profile_response_from_logger(id, task, event, data)
+            else:
+                print('Q pifia metes?')
         else:
             pass
+
+    #-------------------- LOGIN ----------------------#
 
     def login_request_from_client(self, id:int,task: tuple[socket,object],event:Event, data: dict):        
 
@@ -125,6 +143,8 @@ class EntryPointServerTheaded(MultiThreadedServer):
         task[0].close()
         state.desired_data = data
         state.hold_event.set()
+
+    #-------------------- REGISTER ----------------------#
 
     def register_request_from_client(self, id:int,task: tuple[socket,object],event:Event, data: dict):        
 
@@ -342,6 +362,74 @@ class EntryPointServerTheaded(MultiThreadedServer):
         self.storage.delete_state(state.id)
 
     def profile_response_from_logger(self, id:int,task: tuple[socket,object],event:Event, data: dict):
+
+        self.stalker_loggers.update_IP(task[1][0])
+        state = self.storage.get_state(data['id_request'])
+        task[0].close()
+        state.desired_data = data
+        state.hold_event.set()
+
+    #-------------------- FOLLOW ----------------------#
+
+    def follow_request_from_client(self, id:int,task: tuple[socket,object],event:Event, data: dict):
+        
+        token = data['token']
+        nick = data['nick']
+        nick_profile = data['nick_profile']        
+
+        state = self.storage.insert_state()
+        message = {
+            'type': ENTRY_POINT,
+            'proto': PROFILE_REQUEST,
+            'token': token,
+            'nick': nick,
+            'nick_profile': nick_profile,
+            'id_request': state.id
+        }
+
+        s = socket.socket(AF_INET, SOCK_STREAM)
+        ip_logger = self.dispatcher()
+        s.connect((ip_logger, PORT_GENERAL_LOGGER))
+        data_bytes = util.encode(message)
+        s.send(data_bytes)
+        #new_data_bytes = s.recv(1024)
+        s.close()
+
+        if event.wait(10):
+            state = self.storage.get_state(state.id)
+            if state is None:
+                #TODO ver que pasa aqui !!!!!!!!!!
+                task[0].close()
+                return
+
+            if state.desired_data['succesed']:
+                msg = {
+                    'type': ENTRY_POINT,
+                    'proto': PROFILE_RESPONSE,
+                    'succesed': True,                    
+                    'error': None
+                }
+            else:
+                msg = {
+                    'type': ENTRY_POINT,
+                    'proto': PROFILE_RESPONSE,
+                    'succesed': False,                    
+                    'error': state.desired_data['error'],                    
+                }
+        else:
+            msg = {
+                'type': ENTRY_POINT,
+                'proto': PROFILE_RESPONSE,
+                'succesed': False,                
+                'error': 'Tiempo de espera agotado.',                
+            }
+
+        task[0].send(util.encode(msg))
+        task[0].close()
+        self.storage.delete_state(state.id)
+
+
+    def follow_response_from_logger(self, id:int,task: tuple[socket,object],event:Event, data: dict):
 
         self.stalker_loggers.update_IP(task[1][0])
         state = self.storage.get_state(data['id_request'])

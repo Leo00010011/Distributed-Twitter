@@ -7,13 +7,15 @@ try:
     from util import PORT_GENERAL_ENTRY, PORT_GENERAL_LOGGER
     from util import CLIENT, ENTRY_POINT, LOGGER,LOGIN_REQUEST, LOGIN_RESPONSE,\
         NEW_LOGGER_RESPONSE, NEW_LOGGER_REQUEST, REGISTER_REQUEST, REGISTER_RESPONSE, \
-        CREATE_TWEET_REQUEST, CREATE_TWEET_RESPONSE, PROFILE_REQUEST, PROFILE_RESPONSE
+        CREATE_TWEET_REQUEST, CREATE_TWEET_RESPONSE, PROFILE_REQUEST, PROFILE_RESPONSE,\
+        FOLLOW_REQUEST,FOLLOW_RESPONSE
 except:
     import API.util as util
     from API.util import PORT_GENERAL_ENTRY, PORT_GENERAL_LOGGER
     from API.util import CLIENT, ENTRY_POINT, LOGGER,LOGIN_REQUEST, LOGIN_RESPONSE,\
         NEW_LOGGER_RESPONSE, NEW_LOGGER_REQUEST, REGISTER_REQUEST, REGISTER_RESPONSE,\
-        CREATE_TWEET_REQUEST, CREATE_TWEET_RESPONSE, PROFILE_REQUEST, PROFILE_RESPONSE
+        CREATE_TWEET_REQUEST, CREATE_TWEET_RESPONSE, PROFILE_REQUEST, PROFILE_RESPONSE,\
+        FOLLOW_REQUEST,FOLLOW_RESPONSE
 class Client():
 
     def __init__(self):
@@ -152,6 +154,33 @@ class Client():
             else:
                 # print(recv_data['error'])
                 return False, recv_data['error'], None
+        else:
+            # print('Que mierda me respondieron?')
+            return False, 'Que mierda me respondieron?'
+        
+    def follow(self, nick_profile, token, nick):
+
+        msg = {
+            'type': CLIENT,
+            'proto': PROFILE_REQUEST,
+            'token': token,
+            'nick': nick,
+            'nick_profile': nick_profile,
+        }
+
+        #TODO Falta agregar un try para cuando se vaya la conexion
+        send_data = util.encode(msg)
+        s = socket.socket(AF_INET, SOCK_STREAM)
+        s.connect((self.recent_entry_point(), PORT_GENERAL_ENTRY))
+        s.send(send_data)
+        recv_bytes = s.recv()
+        recv_data = util.decode(recv_bytes)
+        if recv_data['proto'] == PROFILE_RESPONSE:
+            if recv_data['succesed']:
+                return True, None
+            else:
+                # print(recv_data['error'])
+                return False, recv_data['error']
         else:
             # print('Que mierda me respondieron?')
             return False, 'Que mierda me respondieron?'
