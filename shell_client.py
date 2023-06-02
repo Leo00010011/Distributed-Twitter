@@ -48,7 +48,7 @@ class ShellClient():
                 if args[0] == "1" and len(args) == 1:
                     self.sign_up()
                 elif args[0] == "2" and len(args) == 1:
-                    exit()
+                    self.sign_in()
                 elif args[0] == "3" and len(args) == 1:
                     exit()
                 else:
@@ -73,7 +73,7 @@ class ShellClient():
                     pass
                 # Ver Perfil
                 elif args[0] == "4" and len(args) == 1:
-                    pass
+                    self.see_profile()
                 # Mi Perfil
                 elif args[0] == "5" and len(args) == 1:
                     pass
@@ -139,10 +139,10 @@ class ShellClient():
             self.print_Dwitter()
             print()
             print('<--- Iniciar Sesion --->')
-            print('Paso 1: Ingrese Nick de Usuario')
+            print('Paso 1: Ingrese su Nick de Usuario')
             print('> ', end='')
             nick = input()
-            print('Paso 2: Ingrese Contrasenna')
+            print('Paso 2: Ingrese su Contrasenna')
             print('> ', end='')
             password = input()            
             
@@ -161,6 +161,88 @@ class ShellClient():
                 inp = input()
                 if inp != 'r':
                     return
+                
+    def see_profile(self):
+
+        util.clear()
+        self.print_Dwitter()
+        print()
+        while True:            
+            print('<--- Ver Perfil --->')
+            print('Paso 1: Ingrese el Nick del Usuario')
+            print('> ', end='')
+            nick = input()
+
+            block = 0
+            while True:
+                succesed, data_profile, over = self.client.profile(nick, self.token, self.nick, block)
+                i = block*10
+                if succesed:
+                    for date, (text, nick_retweet) in data_profile.items():
+                        if nick_retweet is None:
+                            print(f'Dweet {i}, {date}:')
+                            print(text)
+                        else:
+                            print(f'ReDweet {i}, de {nick_retweet}, {date}:')
+                            print(text)
+                        i+=1
+                    if over:
+                        print('|======< Fin del Perfil >======|')
+                        break
+                    print('Pulse ENTER para ver mas, o escriba "q" para terminar con este usuario')
+                    if input() == 'q':
+                        break
+                    block += 1
+                else:
+                    print('Ha ocurrido un ERROR :"(')
+                    print('<+++++ Error +++++>')
+                    print(data_profile)
+                    print('<+++++|+++++|+++++>')
+                    print('Pulse ENTER para volver a intentar, o escriba "q" para terminar con este usuario')
+                    inp = input()
+                    if inp != 'q':
+                        return
+            print('Pulse ENTER para ver otro perfil, o escriba "q" para volver al menu principal')
+            if input() == 'q':
+                break
+
+    def create_tweet(self):
+        util.clear()
+        self.print_Dwitter()
+        print()
+
+        while True:
+
+            print('<--- Crear Dweet --->')
+            print('Paso 1: Ingrese el texto del Dweet. Recuerde que solo puede contener 255 caracteres')
+            print('> ', end='')
+            text = input()
+
+            print('Paso 2: Confirmar subida. Especifique la opcion que desee realizar.')
+            print('1. Publicar Dweet')
+            print('2. Editar Dweet')
+            print('3. Cancelar Dweet')
+            option = input()
+            if option == '1':
+                while True:
+                    succesed, error = self.client.tweet(text, self.token, self.nick)
+                    if succesed:
+                        print('Dweet PUBLICADO CON EXITO!!!')
+                        print('Pulse ENTER para volver al menu principal')
+                        input()
+                        return
+                    else:
+                        print('Ha ocurrido un ERROR :"(')
+                        print('<+++++ Error +++++>')
+                        print(error)
+                        print('<+++++|+++++|+++++>')
+                        print('Pulse ENTER para volver a intentar, o escriba "q" para volver al menu principal')
+                        if input() == 'q':
+                            return
+            elif option == '2':
+                continue
+            else:
+                break
 
 
 s = ShellClient()
