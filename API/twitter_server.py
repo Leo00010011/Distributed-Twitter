@@ -8,16 +8,22 @@ try:
     import util
     from server import Server
     from util import Stalker, Dispatcher
-    from util import CHORD, CLIENT, ENTRY_POINT, LOGGER,LOGIN_REQUEST, LOGIN_RESPONSE, NEW_LOGGER_RESPONSE, NEW_LOGGER_REQUEST, CHORD_RESPONSE, GET_TOKEN, CHORD_REQUEST, ALIVE_REQUEST, ALIVE_RESPONSE, REGISTER_REQUEST, REGISTER_RESPONSE
-    from util import TRANSFERENCE_REQUEST, TRANSFERENCE_RESPONSE, TRANSFERENCE_OVER, LOGOUT_REQUEST, LOGOUT_RESPONSE
+    from util import CLIENT, ENTRY_POINT, LOGGER, CHORD
+    from util import LOGIN_REQUEST, LOGIN_RESPONSE, CHORD_REQUEST, CHORD_RESPONSE, NEW_LOGGER_REQUEST, NEW_LOGGER_RESPONSE, ALIVE_REQUEST, ALIVE_RESPONSE, REGISTER_REQUEST, REGISTER_RESPONSE, TRANSFERENCE_REQUEST
+    from util import TRANSFERENCE_RESPONSE, TRANSFERENCE_OVER, CREATE_TWEET_REQUEST, CREATE_TWEET_RESPONSE, RETWEET_REQUEST, RETWEET_RESPONSE, FOLLOW_REQUEST, FOLLOW_RESPONSE, FEED_REQUEST, FEED_RESPONSE
+    from util import PROFILE_REQUEST, PROFILE_RESPONSE, NEW_ENTRYPOINT_REQUEST, NEW_ENTRYPOINT_RESPONSE, LOGOUT_REQUEST, LOGOUT_RESPONSE, GET_TOKEN
+    from util import PORT_GENERAL_ENTRY, CHORD_PORT, PORT_GENERAL_LOGGER
     import view
     from threaded_server import MultiThreadedServer
 except:
     import API.util as util
     from API.server import Server
     from API.util import Stalker, Dispatcher
-    from API.util import CHORD, CLIENT, ENTRY_POINT, LOGGER,LOGIN_REQUEST, LOGIN_RESPONSE, NEW_LOGGER_RESPONSE, NEW_LOGGER_REQUEST, CHORD_RESPONSE, GET_TOKEN, CHORD_REQUEST, ALIVE_REQUEST, ALIVE_RESPONSE, REGISTER_REQUEST, REGISTER_RESPONSE
-    from API.util import TRANSFERENCE_REQUEST, TRANSFERENCE_RESPONSE,TRANSFERENCE_OVER, LOGOUT_REQUEST, LOGOUT_RESPONSE
+    from API.util import CLIENT, ENTRY_POINT, LOGGER, CHORD
+    from API.util import LOGIN_REQUEST, LOGIN_RESPONSE, CHORD_REQUEST, CHORD_RESPONSE, NEW_LOGGER_REQUEST, NEW_LOGGER_RESPONSE, ALIVE_REQUEST, ALIVE_RESPONSE, REGISTER_REQUEST, REGISTER_RESPONSE, TRANSFERENCE_REQUEST
+    from API.util import TRANSFERENCE_RESPONSE, TRANSFERENCE_OVER, CREATE_TWEET_REQUEST, CREATE_TWEET_RESPONSE, RETWEET_REQUEST, RETWEET_RESPONSE, FOLLOW_REQUEST, FOLLOW_RESPONSE, FEED_REQUEST, FEED_RESPONSE
+    from API.util import PROFILE_REQUEST, PROFILE_RESPONSE, NEW_ENTRYPOINT_REQUEST, NEW_ENTRYPOINT_RESPONSE, LOGOUT_REQUEST, LOGOUT_RESPONSE, GET_TOKEN
+    from API.util import PORT_GENERAL_ENTRY, CHORD_PORT, PORT_GENERAL_LOGGER
     import API.view as view
     from API.threaded_server import MultiThreadedServer
 
@@ -113,14 +119,13 @@ class TweeterServer(MultiThreadedServer):
         nick = data_dict['nick']
         data = {
                 "type" : LOGGER,
-                "ptoto": CHORD_REQUEST,
+                "proto": CHORD_REQUEST,
                 "hash": nick,
                 "ID_request": state.id,
-                "IP": self.socket_server
         } #Construir la peticion del chord
 
         skt = socket.socket(AF_INET,SOCK_STREAM)
-        skt.connect(('127.0.0.1',8023))
+        skt.connect(('127.0.0.1',CHORD_PORT))
         skt.send(util.encode(data))
         
         w = state.hold_event.wait(5)
@@ -138,7 +143,7 @@ class TweeterServer(MultiThreadedServer):
                 "ID_request": state2.id,
             }
             skt = socket.socket(AF_INET,SOCK_STREAM)
-            skt.connect((state.desired_data['IP'],8023))
+            skt.connect((state.desired_data['IP'],CHORD_PORT))
             skt.send(util.encode(data))
 
             w = state2.event_holder.wait(5)
@@ -177,14 +182,13 @@ class TweeterServer(MultiThreadedServer):
         nick = data_dict['nick']
         data = {
                 "type" : LOGGER,
-                "ptoto": CHORD_REQUEST,
+                "proto": CHORD_REQUEST,
                 "Hash": nick,
                 "ID_request": state.id,
-                "IP": self.socket_server
         } #Construir la peticion del chord
         
         skt = socket.socket(AF_INET,SOCK_STREAM)
-        skt.connect(('127.0.0.1',8023))
+        skt.connect(('127.0.0.1',CHORD_PORT))
         skt.send(util.encode(data))
         
         w = state.hold_event.wait(5)
@@ -202,7 +206,7 @@ class TweeterServer(MultiThreadedServer):
                 "ID_request": state2.id,
             }
             skt = socket.socket(AF_INET,SOCK_STREAM)
-            skt.connect((state.desired_data['IP'],8023))
+            skt.connect((state.desired_data['IP'],CHORD_PORT))
             skt.send(util.encode(data))
 
             w = state2.event_holder.wait(5)
@@ -234,14 +238,13 @@ class TweeterServer(MultiThreadedServer):
         nick = data_dict['nick']
         data = {
                 "type" : LOGGER,
-                "ptoto": CHORD_REQUEST,
+                "proto": CHORD_REQUEST,
                 "Hash": nick,
                 "ID_request": state.id,
-                "IP": self.socket_server
         } #Construir la peticion del chord
         
         skt = socket.socket(AF_INET,SOCK_STREAM)
-        skt.connect(('127.0.0.1',8023))
+        skt.connect(('127.0.0.1',CHORD_PORT))
         skt.send(util.encode(data))
         
         w = state.hold_event.wait(5)
@@ -259,7 +262,7 @@ class TweeterServer(MultiThreadedServer):
                 "ID_request": state2.id,
             }
             skt = socket.socket(AF_INET,SOCK_STREAM)
-            skt.connect((state.desired_data['IP'],8023))
+            skt.connect((state.desired_data['IP'],CHORD_PORT))
             skt.send(util.encode(data))
 
             w = state2.event_holder.wait(5)
@@ -427,7 +430,6 @@ class TweeterServer(MultiThreadedServer):
         data = {
             'type': LOGGER,
             'proto': ALIVE_RESPONSE,
-            'IP': self.IP
         }
         socket_client.send(util.encode(data))
         socket_client.close()
@@ -579,7 +581,6 @@ class TweeterServer(MultiThreadedServer):
             'type': TWEET,
             'proto': CHORD_REQUEST,
             'hash': data_dict['nick'],
-            'IP': self.socket_server,
             "ID_request": state.id,
         }
         
@@ -652,7 +653,6 @@ class TweeterServer(MultiThreadedServer):
                         'type': TWEET,
                         'proto': CHORD_REQUEST,
                         'hash': data_dict['nick'],
-                        'IP': self.socket_server,
                         "ID_request": state.id,
                     }
                 skt = socket.socket(AF_INET,SOCK_STREAM)
@@ -735,7 +735,6 @@ class TweeterServer(MultiThreadedServer):
                      'type': TWEET,
                      'proto': CHORD_REQUEST,
                      'hash': t.nick,
-                     'IP': self.socket_server,
                      "ID_request": state.id,
                  }
         
@@ -798,7 +797,6 @@ class TweeterServer(MultiThreadedServer):
                         'type': TWEET,
                         'proto': CHORD_REQUEST,
                         'hash': data_dict['nick2'],
-                        'IP': self.socket_server,
                         "ID_request": state.id,
                     }
                 
@@ -869,7 +867,6 @@ class TweeterServer(MultiThreadedServer):
                         'type': TWEET,
                         'proto': CHORD_REQUEST,
                         'hash': data_dict['nick2'],
-                        'IP': self.socket_server,
                         "ID_request": state.id,
                     }
                 
@@ -955,7 +952,6 @@ class TweeterServer(MultiThreadedServer):
                     'type': TWEET,
                     'proto': CHORD_REQUEST,
                     'hash': f.followed,
-                    'IP': self.socket_server,
                     "ID_request": state.id,
                 }
 
