@@ -24,7 +24,7 @@ except:
 
 class LoggerServer(MultiThreadedServer):
     
-    def __init__(self,port: int, task_max: int, thread_count: int, timout: int, parse_func):
+    def __init__(self,port: int, task_max: int, thread_count: int, timout: int):
 
         MultiThreadedServer.__init__(self,port, task_max, thread_count, timout, LoggerServer.switch)
 
@@ -486,8 +486,5 @@ class LoggerServer(MultiThreadedServer):
         
         socket_client.close()
 
-class DataServer():
-    def share_info(socket_client, addr_client, data_dict):
-        hash_limit = data_dict['logger_id']
 
           

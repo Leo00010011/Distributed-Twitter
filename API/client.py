@@ -19,13 +19,13 @@ except:
 class Client():
 
     def __init__(self):
-        self.entry_point_ips = []
+        self.entry_point_ips = ['172.19.0.3']        
         self.__recent_entry_point_ip = None
         self.token = None
-        self.nick = None     
+        self.nick = None   
         
     def recent_entry_point_ip(self):
-        if self.entry_point_ips is None:
+        if self.__recent_entry_point_ip is None:
             self.__recent_entry_point_ip =rand.choice(self.entry_point_ips)            
         return self.__recent_entry_point_ip
 
@@ -46,7 +46,7 @@ class Client():
         }
         send_data = util.encode(message)
         s = socket.socket(AF_INET, SOCK_STREAM)
-        s.connect((self.recent_entry_point(), PORT_GENERAL_ENTRY))
+        s.connect((self.recent_entry_point_ip(), PORT_GENERAL_ENTRY))
         s.send(send_data)
         recv_bytes = s.recv(1024)
         recv_data = util.decode(recv_bytes)
@@ -78,9 +78,9 @@ class Client():
         }
         send_data = util.encode(message)
         s = socket.socket(AF_INET, SOCK_STREAM)
-        s.connect((self.recent_entry_point(), PORT_GENERAL_ENTRY))
+        s.connect((self.recent_entry_point_ip(), PORT_GENERAL_ENTRY))
         s.send(send_data)
-        recv_bytes = s.recv(1024)
+        recv_bytes = s.recv(10240)
         recv_data = util.decode(recv_bytes)
 
         #TODO Falta agregar un try para cuando se vaya la conexion
@@ -105,7 +105,7 @@ class Client():
         }
         send_data = util.encode(message)
         s = socket.socket(AF_INET, SOCK_STREAM)
-        s.connect((self.recent_entry_point(), PORT_GENERAL_ENTRY))
+        s.connect((self.recent_entry_point_ip(), PORT_GENERAL_ENTRY))
         s.send(send_data)
         recv_bytes = s.recv(1024)
         recv_data = util.decode(recv_bytes)
@@ -142,7 +142,7 @@ class Client():
         #TODO Falta agregar un try para cuando se vaya la conexion
         send_data = util.encode(msg)
         s = socket.socket(AF_INET, SOCK_STREAM)
-        s.connect((self.recent_entry_point(), PORT_GENERAL_ENTRY))
+        s.connect((self.recent_entry_point_ip(), PORT_GENERAL_ENTRY))
         s.send(send_data)
         recv_bytes = s.recv()
         recv_data = util.decode(recv_bytes)
@@ -170,7 +170,7 @@ class Client():
         #TODO Falta agregar un try para cuando se vaya la conexion
         send_data = util.encode(msg)
         s = socket.socket(AF_INET, SOCK_STREAM)
-        s.connect((self.recent_entry_point(), PORT_GENERAL_ENTRY))
+        s.connect((self.recent_entry_point_ip(), PORT_GENERAL_ENTRY))
         s.send(send_data)
         recv_bytes = s.recv()
         recv_data = util.decode(recv_bytes)
@@ -197,7 +197,7 @@ class Client():
         #TODO Falta agregar un try para cuando se vaya la conexion
         send_data = util.encode(msg)
         s = socket.socket(AF_INET, SOCK_STREAM)
-        s.connect((self.recent_entry_point(), PORT_GENERAL_ENTRY))
+        s.connect((self.recent_entry_point_ip(), PORT_GENERAL_ENTRY))
         s.send(send_data)
         recv_bytes = s.recv()
         recv_data = util.decode(recv_bytes)
