@@ -1,10 +1,10 @@
-import API.server
+import API.server_entry_point as server
 from threading import Thread
 
-class ShellServer():
+class ShellServerEntry():
 
     def __init__(self):
-        self.server = API.server.Server()
+        self.server = server.EntryPointServerTheaded()
 
     def run(self):
         while True:

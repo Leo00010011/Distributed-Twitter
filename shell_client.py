@@ -14,6 +14,8 @@ class ShellClient():
         print("||=====================================||")
         print(" <<<<<<|||---\\\\\\ Dwitter ///---|||>>>>>>")
         print("||=====================================||")
+        if self.nick is not None:            
+            print(f'&>+- Usuario: {self.nick} -+<&')
 
     def print_options_unlogin(self):        
         print('<--- Opciones --->')
@@ -82,7 +84,7 @@ class ShellClient():
                     self.follow()
                 # Cerrar Sesion
                 elif args[0] == "7" and len(args) == 1:
-                    pass
+                    self.logout()
                 # Salir
                 elif args[0] == "8" and len(args) == 1:                    
                     exit()
@@ -162,7 +164,7 @@ class ShellClient():
                 if inp != 'r':
                     return
 
-    def sign_out(self):
+    def logout(self):
         
         util.clear()
         self.print_Dwitter()
@@ -176,6 +178,9 @@ class ShellClient():
                 if succesed:
                     print('SESION FINALIZADA CON EXITO!')
                     print('Pulse ENTER para volver al menu principal')
+                    self.token = None
+                    self.nick = None
+                    self.name = None
                     input()
                     return
                 else:
