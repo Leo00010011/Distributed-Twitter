@@ -168,3 +168,9 @@ def GetProfileRange(nick, offset, limit):
 
 def GetFollowed(nick):
     return Follow.select().where(Follow.follower.alias == nick)
+
+def ChechTweet(nick, date):
+    try: 
+        return Tweet.select().where(Tweet.nick == nick, Tweet.date == date).get()
+    except:
+        return False
