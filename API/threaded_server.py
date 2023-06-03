@@ -106,6 +106,7 @@ class MultiThreadedServer:
         self.end_event = Event()
         self.task_list = Queue(task_max)
         self.storage = StateStorage()
+        self.port = port
 
     def consumer_func(id : int,task_list: Queue ,event :Event, parse_func,self_timeout,storage):
         while not event.is_set() or not task_list.empty():
@@ -130,22 +131,25 @@ class MultiThreadedServer:
 
 
     def start_server(self):
+        print('start server')
         with concurrent.futures.ThreadPoolExecutor(max_workers = self.thread_count) as executor:
             executor.submit(end_event_client,self.end_event,self.port)
             for id in range(self.thread_count):
-                executor.submit(MultiThreadedServer.consumer_func,id,self.task_list,self.end_event,self.parse_func,self.timeout)
-            s = socket(family = AF_INET, type = SOCK_STREAM)
+                executor.submit(MultiThreadedServer.consumer_func,id,self.task_list,self.end_event,self.parse_func,self.timeout, self.storage)
+            s = socket(family = AF_INET, type = SOCK_STREAM)            
             s.bind(("0.0.0.0", self.port))
             s.listen(5)
+            print('Listen')
             while True:
                 (socket_client, addr_client) = s.accept()
+                print('Accept')
+                print(addr_client)
                 if(self.end_event.is_set()):
+                    print('Aqui no debe entrar')
                     socket_client.close()
                     break
+                print('Aqui si debe entrar')
                 self.task_list.put((socket_client, addr_client))
             s.close()
             print('ENDED listening thread')
     
-server = MultiThreadedServer(15000,10,10,5,server_printer)
-server.start_server()
-

@@ -4,6 +4,7 @@ import secrets
 import time
 import heapq
 import random
+import os
 
 alphabet = string.ascii_letters + string.digits
 
@@ -11,7 +12,6 @@ alphabet = string.ascii_letters + string.digits
 CLIENT = 0
 ENTRY_POINT = 1
 LOGGER = 2
-
 
 # Protocolos de pedidos
 LOGIN_REQUEST = 0
@@ -43,9 +43,9 @@ LOGOUT_REQUEST = 25
 LOGOUT_RESPONSE = 26
 
 # Puertos de escucha
-PORT_GENERAL_ENTRY = 8069
-CHORD_PORT = 8042
-PORT_GENERAL_LOGGER = 8071
+PORT_GENERAL_ENTRY = 15069
+CHORD_PORT = 15042
+PORT_GENERAL_LOGGER = 15071
 
 def encode(data_dict):
     '''
@@ -84,7 +84,7 @@ class Stalker:
     '''
     Estructura que guarda una lista de IP:Puertos (o Puertos),
     con la ultima hora de actividad. Recomienda de forma aleatoria un IP
-    para verificar si est'a vivo a'un, pero d'ando mas probabilidad a los
+    para verificar si est'a vivo a'un, pero dando mas probabilidad a los
     IP menos actualizados.
     '''
     def __init__(self, type):
@@ -108,7 +108,7 @@ class Stalker:
         con el tiempo actual. Si no est'a, se a~nade nuevo.
         '''
         for i, item in enumerate(self.list):
-            if item == dir:
+            if item[1] == dir:
                 self.list[i] = (time.time(), dir)
                 self.list.sort()
                 return
@@ -120,7 +120,7 @@ class Stalker:
         se retorna None
         '''
         for i, item in enumerate(self.list):
-            if item == dir:
+            if item[1] == dir:
                 return self.list.pop(i)
         return None
     
@@ -131,6 +131,16 @@ class Stalker:
         '''
         _, dir = random.choices(self.list,weights=range(len(self.list), 0, -1),k=1)[0]
         return dir
+    
+    def dieds_dirs(self, umbral_time):
+
+        real_time = time.time()
+        dieds = []
+        for i in len(self.list):
+            t, dir = self.list[i]
+            if real_time - t >= umbral_time:
+                dieds.append(dir)
+        return dieds
 
     def msg_stalk(self):
         '''
@@ -138,6 +148,13 @@ class Stalker:
         '''
         msg = {
             'type': self.type,
-            'proto': 1000, # Definir el protocolo de estar vivo.
+            'proto': ALIVE_REQUEST, # Definir el protocolo de estar vivo.
         }
         return msg
+
+
+def clear():
+    if os.name == "nt":
+        os.system("cls")
+    else:
+        os.system("clear")
