@@ -44,14 +44,16 @@ class Client():
             'nick': nick,
             'password': password,        
         }
-        send_data = util.encode(message)
-        s = socket.socket(AF_INET, SOCK_STREAM)
-        s.connect((self.recent_entry_point_ip(), PORT_GENERAL_ENTRY))
-        s.send(send_data)
-        recv_bytes = s.recv(1024)
-        recv_data = util.decode(recv_bytes)
-
-        #TODO Falta agregar un try para cuando se vaya la conexion
+        try:
+            send_data = util.encode(message)
+            s = socket.socket(AF_INET, SOCK_STREAM)
+            s.connect((self.recent_entry_point_ip(), PORT_GENERAL_ENTRY))
+            s.send(send_data)
+            recv_bytes = s.recv(1024)
+            recv_data = util.decode(recv_bytes)
+        except Exception as e:
+            return False, str(e)
+        
         if recv_data['proto'] == REGISTER_RESPONSE:
             if recv_data['succesed']:
                 # print('Usuario Registrado correctamente')
@@ -76,14 +78,16 @@ class Client():
             'nick': nick,
             'password': password,        
         }
-        send_data = util.encode(message)
-        s = socket.socket(AF_INET, SOCK_STREAM)
-        s.connect((self.recent_entry_point_ip(), PORT_GENERAL_ENTRY))
-        s.send(send_data)
-        recv_bytes = s.recv(10240)
-        recv_data = util.decode(recv_bytes)
-
-        #TODO Falta agregar un try para cuando se vaya la conexion
+        try:
+            send_data = util.encode(message)
+            s = socket.socket(AF_INET, SOCK_STREAM)
+            s.connect((self.recent_entry_point_ip(), PORT_GENERAL_ENTRY))
+            s.send(send_data)
+            recv_bytes = s.recv(10240)
+            recv_data = util.decode(recv_bytes)
+        except Exception as e:
+            return False, str(e)
+        
         if recv_data['proto'] == LOGIN_RESPONSE:
             if recv_data['succesed']:
                 self.token = recv_data['token']
@@ -103,14 +107,16 @@ class Client():
             'nick': nick,
             'token': token,        
         }
-        send_data = util.encode(message)
-        s = socket.socket(AF_INET, SOCK_STREAM)
-        s.connect((self.recent_entry_point_ip(), PORT_GENERAL_ENTRY))
-        s.send(send_data)
-        recv_bytes = s.recv(1024)
-        recv_data = util.decode(recv_bytes)
-
-        #TODO Falta agregar un try para cuando se vaya la conexion
+        try:
+            send_data = util.encode(message)
+            s = socket.socket(AF_INET, SOCK_STREAM)
+            s.connect((self.recent_entry_point_ip(), PORT_GENERAL_ENTRY))
+            s.send(send_data)
+            recv_bytes = s.recv(1024)
+            recv_data = util.decode(recv_bytes)
+        except Exception as e:
+            return False, str(e)
+        
         if recv_data['proto'] == LOGOUT_RESPONSE:
             if recv_data['succesed']:                
                 return True, None
@@ -138,14 +144,17 @@ class Client():
             'nick': nick,
             'text': text
         }
-
-        #TODO Falta agregar un try para cuando se vaya la conexion
-        send_data = util.encode(msg)
-        s = socket.socket(AF_INET, SOCK_STREAM)
-        s.connect((self.recent_entry_point_ip(), PORT_GENERAL_ENTRY))
-        s.send(send_data)
-        recv_bytes = s.recv()
-        recv_data = util.decode(recv_bytes)
+        
+        try:
+            send_data = util.encode(msg)
+            s = socket.socket(AF_INET, SOCK_STREAM)
+            s.connect((self.recent_entry_point_ip(), PORT_GENERAL_ENTRY))
+            s.send(send_data)
+            recv_bytes = s.recv()
+            recv_data = util.decode(recv_bytes)
+        except Exception as e:
+            return False, str(e)
+        
         if recv_data['proto'] == CREATE_TWEET_RESPONSE:
             if recv_data['succesed']:                
                 return True, None
@@ -166,14 +175,17 @@ class Client():
             'nick_profile': nick_profile,
             'block': block
         }
-
-        #TODO Falta agregar un try para cuando se vaya la conexion
-        send_data = util.encode(msg)
-        s = socket.socket(AF_INET, SOCK_STREAM)
-        s.connect((self.recent_entry_point_ip(), PORT_GENERAL_ENTRY))
-        s.send(send_data)
-        recv_bytes = s.recv()
-        recv_data = util.decode(recv_bytes)
+        
+        try:
+            send_data = util.encode(msg)
+            s = socket.socket(AF_INET, SOCK_STREAM)
+            s.connect((self.recent_entry_point_ip(), PORT_GENERAL_ENTRY))
+            s.send(send_data)
+            recv_bytes = s.recv()
+            recv_data = util.decode(recv_bytes)
+        except Exception as e:
+            return False, str(e)
+        
         if recv_data['proto'] == PROFILE_RESPONSE:
             if recv_data['succesed']:
                 return True, recv_data['data_profile'], recv_data['over']
@@ -194,13 +206,16 @@ class Client():
             'nick_profile': nick_profile,
         }
 
-        #TODO Falta agregar un try para cuando se vaya la conexion
-        send_data = util.encode(msg)
-        s = socket.socket(AF_INET, SOCK_STREAM)
-        s.connect((self.recent_entry_point_ip(), PORT_GENERAL_ENTRY))
-        s.send(send_data)
-        recv_bytes = s.recv()
-        recv_data = util.decode(recv_bytes)
+        try:
+            send_data = util.encode(msg)
+            s = socket.socket(AF_INET, SOCK_STREAM)
+            s.connect((self.recent_entry_point_ip(), PORT_GENERAL_ENTRY))
+            s.send(send_data)
+            recv_bytes = s.recv()
+            recv_data = util.decode(recv_bytes)
+        except Exception as e:
+            return False, str(e)
+        
         if recv_data['proto'] == PROFILE_RESPONSE:
             if recv_data['succesed']:
                 return True, None

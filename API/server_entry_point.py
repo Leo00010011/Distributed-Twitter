@@ -31,9 +31,11 @@ class EntryPointServerTheaded(MultiThreadedServer):
         self.stalker_loggers = Stalker(ENTRY_POINT)
         self.stalker_entrys = Stalker(ENTRY_POINT)
         self.parse_func = self.switch
+        
+        for i in ['agregar ip de los logger']:
+            self.stalker_loggers.update_IP(i)
 
-    def dispatcher(self):
-        return '172.19.0.4'
+    def dispatcher(self):        
         l = self.stalker_loggers.list
         i = rand.randint(0,min(len(l),5))
         return self.stalker_loggers[i][1]
@@ -130,7 +132,7 @@ class EntryPointServerTheaded(MultiThreadedServer):
             return
 
         print('wait')
-        if state.event.wait(5):
+        if state.hold_event.wait(5):
             state = storage.get_state(state.id)
             if state is None:
                 #TODO ver que pasa aqui !!!!!!!!!!
@@ -220,7 +222,7 @@ class EntryPointServerTheaded(MultiThreadedServer):
             print('enviado')
             return
 
-        if state.event.wait(10):
+        if state.hold_event.wait(10):
             state = storage.get_state(state.id)
             if state is None:
                 #TODO ver que pasa aqui !!!!!!!!!!
@@ -304,7 +306,7 @@ class EntryPointServerTheaded(MultiThreadedServer):
             print('enviado')
             return
 
-        if state.event.wait(10):
+        if state.hold_event.wait(10):
             state = storage.get_state(state.id)
             if state is None:
                 #TODO ver que pasa aqui !!!!!!!!!!
@@ -406,7 +408,7 @@ class EntryPointServerTheaded(MultiThreadedServer):
             print('enviado')
             return
 
-        if state.event.wait(10):
+        if state.hold_event.wait(10):
             state = storage.get_state(state.id)
             if state is None:
                 #TODO ver que pasa aqui !!!!!!!!!!
@@ -493,7 +495,7 @@ class EntryPointServerTheaded(MultiThreadedServer):
             print('enviado')
             return
 
-        if state.event.wait(10):
+        if state.hold_event.wait(10):
             state = storage.get_state(state.id)
             if state is None:
                 #TODO ver que pasa aqui !!!!!!!!!!
@@ -580,7 +582,7 @@ class EntryPointServerTheaded(MultiThreadedServer):
             print('enviado')
             return
 
-        if state.event.wait(10):
+        if state.hold_event.wait(10):
             state = storage.get_state(state.id)
             if state is None:
                 #TODO ver que pasa aqui !!!!!!!!!!
