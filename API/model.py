@@ -1,5 +1,6 @@
 import peewee
 import hashlib
+import datetime
 from peewee import Model, SqliteDatabase, CharField, DateField, IntegerField, ForeignKeyField
 
 main_db = SqliteDatabase('social_network.db')
@@ -31,7 +32,9 @@ class Tweet(Model):
 
 class ReTweet(Model):
     user = ForeignKeyField(User)
-    tweet = ForeignKeyField(Tweet)
+    nick = CharField(16)
+    date_tweet = DateField()
+    date_retweet = DateField(default=datetime.datetime.now(), formats= '%Y-%m-%d %H:%M:%S')
 
     class Meta:
         database = main_db
