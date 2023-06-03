@@ -19,7 +19,7 @@ except:
 class Client():
 
     def __init__(self):
-        self.entry_point_ips = ['172.19.0.3']        
+        self.entry_point_ips = ['entry']        
         self.__recent_entry_point_ip = None
         self.token = None
         self.nick = None   

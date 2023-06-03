@@ -9,7 +9,7 @@ try:
     from server import Server
     from util import Stalker, Dispatcher
     from util import CHORD, CLIENT, ENTRY_POINT, LOGGER,LOGIN_REQUEST, LOGIN_RESPONSE, NEW_LOGGER_RESPONSE, NEW_LOGGER_REQUEST, CHORD_RESPONSE, GET_TOKEN, CHORD_REQUEST, ALIVE_REQUEST, ALIVE_RESPONSE, REGISTER_REQUEST, REGISTER_RESPONSE
-    from util import TRANSFERENCE_REQUEST, TRANSFERENCE_RESPONSE, TRANSFERENCE_OVER, LOGOUT_REQUEST, LOGOUT_RESPONSE
+    from util import TRANSFERENCE_REQUEST, TRANSFERENCE_RESPONSE, TRANSFERENCE_OVER, LOGOUT_REQUEST, LOGOUT_RESPONSE, REGISTER_RESPONSE, CHORD_PORT
     import view
     from threaded_server import MultiThreadedServer
 except:
@@ -17,7 +17,7 @@ except:
     from API.server import Server
     from API.util import Stalker, Dispatcher
     from API.util import CHORD, CLIENT, ENTRY_POINT, LOGGER,LOGIN_REQUEST, LOGIN_RESPONSE, NEW_LOGGER_RESPONSE, NEW_LOGGER_REQUEST, CHORD_RESPONSE, GET_TOKEN, CHORD_REQUEST, ALIVE_REQUEST, ALIVE_RESPONSE, REGISTER_REQUEST, REGISTER_RESPONSE
-    from API.util import TRANSFERENCE_REQUEST, TRANSFERENCE_RESPONSE,TRANSFERENCE_OVER, LOGOUT_REQUEST, LOGOUT_RESPONSE
+    from API.util import TRANSFERENCE_REQUEST, TRANSFERENCE_RESPONSE,TRANSFERENCE_OVER, LOGOUT_REQUEST, LOGOUT_RESPONSE, REGISTER_RESPONSE, CHORD_PORT
     import API.view as view
     from API.threaded_server import MultiThreadedServer
 
@@ -28,7 +28,7 @@ class LoggerServer(MultiThreadedServer):
 
         MultiThreadedServer.__init__(self,port, task_max, thread_count, timout, LoggerServer.switch)
 
-    def switch(id:int, task: tuple[socket,object], event:Event, storage):
+    def switch(id:int, task, event:Event, storage):
         '''
         Interprete y verificador de peticiones generales.
         Revisa que la estructura de la peticion sea adecuada,
@@ -37,20 +37,22 @@ class LoggerServer(MultiThreadedServer):
         ---------------------------------------
         `data_dict['type']`: Tipo de peticion
         '''
+        print('Entre al switch logger')
         (socket_client, addr_client) = task
-        data_byte = socket_client.recv(1024)
+        data_bytes = socket_client.recv(1024)
         
         try:
             data_dict = util.decode(data_bytes)
             type_rqst = data_dict["type"]       
             proto_rqst = data_dict["proto"]
+            print(data_dict)
         except Exception as e:
             print(e)
             return
         
         if type_rqst == ENTRY_POINT:
             if proto_rqst == LOGIN_REQUEST:
-                LoggerServer.login_request(socket_client, addr_client, data_dict)
+                LoggerServer.login_request(socket_client, addr_client, data_dict,storage)
             elif proto_rqst == NEW_LOGGER_RESPONSE: 
                 pass #TODO 
             elif proto_rqst == ALIVE_REQUEST:
@@ -99,10 +101,9 @@ class LoggerServer(MultiThreadedServer):
         nick = data_dict['nick']
         data = {
                 "type" : LOGGER,
-                "ptoto": CHORD_REQUEST,
+                "proto": CHORD_REQUEST,
                 "hash": nick,
-                "ID_request": state.id,
-                "IP": self.socket_server
+                "ID_request": state.id
         } #Construir la peticion del chord
 
         skt = socket.socket(AF_INET,SOCK_STREAM)
@@ -141,7 +142,7 @@ class LoggerServer(MultiThreadedServer):
 
         data = {
                     'type':LOGGER,
-                    'proto': LOGIN_RESPONSE,
+                    'proto': REGISTER_RESPONSE,
                     'succesed': False,
                     'token': None,
                     'error': 'Something went wrong in the network connection',
@@ -156,7 +157,8 @@ class LoggerServer(MultiThreadedServer):
         `data_dict['nick']`: Nick
         `data_dict['password']`: Contrasenna
         '''
-        #pedir un evento para m\'aquina de estado 
+        #pedir un evento para m\'aquina de estado
+        print('Entre al loggin request') 
         state = storage.insert_state()
 
         #Hay que usar Chord para ver quien tiene a ese Nick
@@ -165,19 +167,19 @@ class LoggerServer(MultiThreadedServer):
                 "type" : LOGGER,
                 "ptoto": CHORD_REQUEST,
                 "Hash": nick,
-                "ID_request": state.id,
-                "IP": self.socket_server
+                "ID_request": state.id
         } #Construir la peticion del chord
         
         skt = socket.socket(AF_INET,SOCK_STREAM)
-        skt.connect(('127.0.0.1',8023))
+        skt.connect(('127.0.0.1',CHORD_PORT))
         skt.send(util.encode(data))
+        print('mande el chord')
         
         w = state.hold_event.wait(5)
         state = storage.get_state(state.id)
         storage.delete_state(state.id)
-        
         if w:
+            print('chord seteado')
             #Escribirle al server que tiene al usuario
             state2 = storage.get_state()
             data = {
@@ -200,9 +202,10 @@ class LoggerServer(MultiThreadedServer):
                 try:
                    socket_client.send(util.encode(state.desired_data))
                    socket_client.close()
+                   return
                 except:
                     pass
-
+        print('chord wait terminado')
         data = {
                 'type':LOGGER,
                 'proto': LOGIN_RESPONSE,
@@ -222,8 +225,7 @@ class LoggerServer(MultiThreadedServer):
                 "type" : LOGGER,
                 "ptoto": CHORD_REQUEST,
                 "Hash": nick,
-                "ID_request": state.id,
-                "IP": self.socket_server
+                "ID_request": state.id
         } #Construir la peticion del chord
         
         skt = socket.socket(AF_INET,SOCK_STREAM)
@@ -305,7 +307,7 @@ class LoggerServer(MultiThreadedServer):
                 view.CreateUser(name, nick, hashlib.sha1(bytes(password)).hexdigest(), hashlib.sha1(bytes(nick)).hexdigest())
                 data = {
                     'type': LOGGER,
-                    'proto': REQUEST_RESPONSE,
+                    'proto': REGISTER_RESPONSE,
                     'succesed': True,
                     'error': None,
                     'ID_request': data_dict['ID_request']
@@ -313,7 +315,7 @@ class LoggerServer(MultiThreadedServer):
             except:
                 data = {
                     'type': LOGGER,
-                    'proto': REQUEST_RESPONSE,
+                    'proto': REGISTER_RESPONSE,
                     'succesed': False,
                     'error': 'Error trying to register',
                     'ID_request': data_dict['ID_request']
@@ -321,7 +323,7 @@ class LoggerServer(MultiThreadedServer):
         else:
             data = {
                     'type': LOGGER,
-                    'proto': REQUEST_RESPONSE,
+                    'proto': REGISTER_RESPONSE,
                     'succesed': False,
                     'error': 'User Nick must be unique',
                     'ID_request': data_dict['ID_request']
@@ -412,8 +414,7 @@ class LoggerServer(MultiThreadedServer):
     def alive_request(socket_client, addr_client, data_dict):
         data = {
             'type': LOGGER,
-            'proto': ALIVE_RESPONSE,
-            'IP': self.IP
+            'proto': ALIVE_RESPONSE
         }
         socket_client.send(util.encode(data))
         socket_client.close()
