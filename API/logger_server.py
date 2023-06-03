@@ -9,7 +9,7 @@ try:
     from server import Server
     from util import Stalker, Dispatcher
     from util import CHORD, CLIENT, ENTRY_POINT, LOGGER,LOGIN_REQUEST, LOGIN_RESPONSE, NEW_LOGGER_RESPONSE, NEW_LOGGER_REQUEST, CHORD_RESPONSE, GET_TOKEN, CHORD_REQUEST, ALIVE_REQUEST, ALIVE_RESPONSE, REGISTER_REQUEST, REGISTER_RESPONSE
-    from util import TRANSFERENCE_REQUEST, TRANSFERENCE_RESPONSE, TRANSFERENCE_OVER
+    from util import TRANSFERENCE_REQUEST, TRANSFERENCE_RESPONSE, TRANSFERENCE_OVER, LOGOUT_REQUEST, LOGOUT_RESPONSE
     import view
     from threaded_server import MultiThreadedServer
 except:
@@ -17,14 +17,14 @@ except:
     from API.server import Server
     from API.util import Stalker, Dispatcher
     from API.util import CHORD, CLIENT, ENTRY_POINT, LOGGER,LOGIN_REQUEST, LOGIN_RESPONSE, NEW_LOGGER_RESPONSE, NEW_LOGGER_REQUEST, CHORD_RESPONSE, GET_TOKEN, CHORD_REQUEST, ALIVE_REQUEST, ALIVE_RESPONSE, REGISTER_REQUEST, REGISTER_RESPONSE
-    from API.util import TRANSFERENCE_REQUEST, TRANSFERENCE_RESPONSE,TRANSFERENCE_OVER
+    from API.util import TRANSFERENCE_REQUEST, TRANSFERENCE_RESPONSE,TRANSFERENCE_OVER, LOGOUT_REQUEST, LOGOUT_RESPONSE
     import API.view as view
     from API.threaded_server import MultiThreadedServer
 
 
 class LoggerServer(MultiThreadedServer):
     
-    def __init__(self,port: int, task_max: int, thread_count: int, timout: int, parse_func):
+    def __init__(self,port: int, task_max: int, thread_count: int, timout: int):
 
         MultiThreadedServer.__init__(self,port, task_max, thread_count, timout, LoggerServer.switch)
 
@@ -57,24 +57,27 @@ class LoggerServer(MultiThreadedServer):
                 LoggerServer.alive_request(socket_client, addr_client, data_dict)
             elif proto_rqst == REGISTER_REQUEST:
                 LoggerServer.register_request(socket_client, addr_client, data_dict, storage)
+            elif proto_rqst == LOGOUT_REQUEST:
+                LoggerServer.logout_request(socket_client, addr_client, data_dict,storage)
         
         elif type_rqst == LOGGER:
             if proto_rqst == CHORD_RESPONSE:
                 LoggerServer.chord_response(socket_client, addr_client, data_dict,storage)
             elif proto_rqst == LOGIN_REQUEST:
                 LoggerServer.get_token(socket_client, addr_client, data_dict)
-            elif proto_rqst == LOGIN_RESPONSE: 
+            elif proto_rqst in  (LOGIN_RESPONSE,REGISTER_RESPONSE, LOGIN_RESPONSE): 
                 LoggerServer.set_data(socket_client, addr_client, data_dict,storage)
             elif proto_rqst == REGISTER_REQUEST:
                 LoggerServer.get_register(socket_client, addr_client, data_dict)
-            elif proto_rqst == REGISTER_RESPONSE:
-                LoggerServer.set_data(socket_client, addr_client, data_dict, storage)
             elif proto_rqst == TRANSFERENCE_REQUEST:
                 LoggerServer.data_transfer_request(socket_client, addr_client, data_dict)
             elif proto_rqst == TRANSFERENCE_RESPONSE:
                 LoggerServer.data_transfer_response(socket_client, addr_client, data_dict)
             elif proto_rqst == TRANSFERENCE_OVER:
                 LoggerServer.data_transfer_over(socket_client, addr_client, data_dict)
+            elif proto_rqst == LOGOUT_REQUEST:
+                LoggerServer.get_logout(socket_client, addr_client, data_dict)
+        
         else: 
             pass
         #TODO error de tipo
@@ -210,6 +213,62 @@ class LoggerServer(MultiThreadedServer):
         socket_client.send(util.encode(data))
         socket_client.close()
 
+    def logout_request(socket_client, addr_client, data_dict, storage):
+        state = storage.insert_state()
+
+        #Hay que usar Chord para ver quien tiene a ese Nick
+        nick = data_dict['nick']
+        data = {
+                "type" : LOGGER,
+                "ptoto": CHORD_REQUEST,
+                "Hash": nick,
+                "ID_request": state.id,
+                "IP": self.socket_server
+        } #Construir la peticion del chord
+        
+        skt = socket.socket(AF_INET,SOCK_STREAM)
+        skt.connect(('127.0.0.1',8023))
+        skt.send(util.encode(data))
+        
+        w = state.hold_event.wait(5)
+        state = storage.get_state(state.id)
+        storage.delete_state(state.id)
+        
+        if w:
+            #Escribirle al server que tiene al usuario
+            state2 = storage.get_state()
+            data = {
+                "type": LOGGER,
+                "proto": LOGOUT_REQUEST,
+                "nick": data_dict["nick"],
+                "password": data_dict["password"],
+                "ID_request": state2.id,
+            }
+            skt = socket.socket(AF_INET,SOCK_STREAM)
+            skt.connect((state.desired_data['IP'],8023))
+            skt.send(util.encode(data))
+
+            w = state2.event_holder.wait(5)
+            state = storage.get_state(state2.id)
+            storage.delete_state(state.id)
+            
+            if w:
+                #reenviar mensaje de autenticacion
+                try:
+                   socket_client.send(util.encode(state.desired_data))
+                   socket_client.close()
+                except:
+                    pass
+
+        data = {
+                'type':LOGGER,
+                'proto': LOGOUT_RESPONSE,
+                'succesed': False,
+                'token': None,
+                'error': 'Something went wrong in the network connection',
+           }
+        socket_client.send(util.encode(data))
+        socket_client.close()
 
     def chord_response(socket_client, addr_client, data_dict, storage):
         '''
@@ -321,8 +380,35 @@ class LoggerServer(MultiThreadedServer):
         socket_client.send(util.encode(data))
         socket_client.close()
 
+    def get_logout(socket_client, addr_client, data_dict):
+        nick = data_dict["nick"]
+        token = data_dict["token"]
+        if view.CheckToken(token, nick):
+            if view.RemoveToken(nick, token):
+                data ={
+                    'type':LOGGER,
+                    'proto': LOGOUT_REQUEST,
+                    'succesed': True,
+                    'error': None
+                }
+            else:
+                data ={
+                    'type':LOGGER,
+                    'proto': LOGOUT_REQUEST,
+                    'succesed': False,
+                    'error': "Error removing login"
+                }
+        else:
+            data = {
+                    'type':LOGGER,
+                    'proto': LOGOUT_REQUEST,
+                    'succesed': False,
+                    'error': "Invalid user session data"
+                }
+        
+        socket_client.send(util.encode(data))
+        socket_client.close()
 
-    
     def alive_request(socket_client, addr_client, data_dict):
         data = {
             'type': LOGGER,
@@ -400,8 +486,5 @@ class LoggerServer(MultiThreadedServer):
         
         socket_client.close()
 
-class DataServer():
-    def share_info(socket_client, addr_client, data_dict):
-        hash_limit = data_dict['logger_id']
 
           

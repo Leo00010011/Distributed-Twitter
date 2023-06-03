@@ -320,6 +320,46 @@ class TweetServer(LoggerServer):
         socket_client.send(util.encode(data))
         socket_client.close()  
                  
-    # def create_retweet(socket_client, addr_client, data_dict, storage):
+    def create_retweet(socket_client, addr_client, data_dict, storage):
+        if view.CheckToken(data_dict['token'], data_dict['nick']):
+                state = storage.insert_state()
+                data = {
+                        'type': TWEET,
+                        'proto': CHORD_REQUEST,
+                        'hash': data_dict['nick2'],
+                        'IP': self.socket_server,
+                        "ID_request": state.id,
+                    }
+                
+                skt = socket.socket(AF_INET,SOCK_STREAM)
+                skt.connect(('127.0.0.1', CHORD_PORT ))
+                skt.send(util.encode(data))
 
+                w = state.hold_event.wait(5)
+                state = storage.get_state(state.id)
+                storage.delete_state(state.id)
+
+                if w:
+                    #Escribirle al server que tiene al usuario
+                    state2 = storage.get_state()
+                    data = {
+                            'type': TWEET,
+                            'proto': CHECK_TWEET,
+                            'nick': data_dict['nick2'],
+                            'date': data_dict['date'],
+                            "ID_request": state2.id,
+                    }
+
+                    skt = socket.socket(AF_INET,SOCK_STREAM)
+                    skt.connect((state.desired_data['IP'], PORT_GENERAL_LOGGER))
+                    skt.send(util.encode(data_dict))                    
+                    
+                    w = state2.event_holder.wait(5)
+                    state = storage.get_state(state2.id)
+                    storage.delete_state(state.id)
+
+                    data = state.desire_data
+                    if w:
+                        data['ID_request'] = data_dict['ID_request']
+                       
 

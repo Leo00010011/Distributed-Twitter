@@ -71,12 +71,15 @@ def ForceRemoveToken(token):
     '''
     Token.delete().where(Token.token == token).execute() 
 
-def RemoveToken(user_id, token):
+def RemoveToken(nick, token):
     '''
     Elimina de forma segura el token
     '''
-    Token.delete().where(Token.token == token, Token.id == user_id).execute()
-
+    try:
+        Token.delete().where(Token.token == token, Token.user_id.alias == nick).execute()
+        return True
+    except:
+        return False
 def CreateTweet(text, nick):
 
     user_id = User.select().where(User.alias == nick).get().id
