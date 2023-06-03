@@ -55,6 +55,10 @@ def CreateToken(user_id):
     Token.create(id= user_id, token= token)
     return token
 
+def CreateTokenForced(nick, token):
+    user = CheckUserAlias(nick)
+    Token.create(user_id= user, token= token)
+
 def CheckToken(token, nick):
     '''
     Devuelve el ID del usuario asignado al token
@@ -80,19 +84,24 @@ def RemoveToken(nick, token):
         return True
     except:
         return False
-def CreateTweet(text, nick):
+def CreateTweet(text, nick, date=None):
 
     user_id = User.select().where(User.alias == nick).get().id
     if user_id:
-        Tweet.create(user_id= user_id, text= text)
+        if date is None:
+            Tweet.create(user_id= user_id, text= text)
+        else: Tweet.create(user_id= user_id, text= text, tweet_date = date)
         return True
     else:
         return False
 
-def CreateReTweet(user_id, tweet_id):
-    
+def CreateReTweet(user_id, nick, date, retweet_date = None):
     try:
-        ReTweet.create(user = user_id, tweet=tweet_id)
+        user_id = CheckUserAlias(user_id)
+        if retweet_date is None:
+            ReTweet.create(user = user_id, nick=tweet_id, date_tweet = date)
+        else: 
+            ReTweet.create(user = user_id, nick=tweet_id, date_tweet = date, date_retweet = retweet_date)
         return True
     except: 
         return False
@@ -154,6 +163,8 @@ def CreateFollow(nick1,nick2):
         return False 
 
 def GetProfileRange(nick, offset, limit):
-    return Tweet.select().where(Tweet.user.alias == nick).oreder_by(Tweet.date.descendent()).offset(offset).limit(limit)
+    return (Tweet.select().where(Tweet.user.alias == nick).oreder_by(Tweet.date.descendent()).offset(offset).limit(limit), Retweet.select().where(Retweet.user.alias == nick).oreder_by(Retweet.date_retweet.descendent()).offset(offset).limit(limit))
 
 
+def GetFollowed(nick):
+    return Follow.select().where(Follow.follower.alias == nick)
