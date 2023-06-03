@@ -8,14 +8,14 @@ try:
     from util import CLIENT, ENTRY_POINT, LOGGER,LOGIN_REQUEST, LOGIN_RESPONSE,\
         NEW_LOGGER_RESPONSE, NEW_LOGGER_REQUEST, REGISTER_REQUEST, REGISTER_RESPONSE, \
         CREATE_TWEET_REQUEST, CREATE_TWEET_RESPONSE, PROFILE_REQUEST, PROFILE_RESPONSE,\
-        FOLLOW_REQUEST,FOLLOW_RESPONSE
+        FOLLOW_REQUEST,FOLLOW_RESPONSE, LOGOUT_REQUEST, LOGOUT_RESPONSE
 except:
     import API.util as util
     from API.util import PORT_GENERAL_ENTRY, PORT_GENERAL_LOGGER
     from API.util import CLIENT, ENTRY_POINT, LOGGER,LOGIN_REQUEST, LOGIN_RESPONSE,\
         NEW_LOGGER_RESPONSE, NEW_LOGGER_REQUEST, REGISTER_REQUEST, REGISTER_RESPONSE,\
         CREATE_TWEET_REQUEST, CREATE_TWEET_RESPONSE, PROFILE_REQUEST, PROFILE_RESPONSE,\
-        FOLLOW_REQUEST,FOLLOW_RESPONSE
+        FOLLOW_REQUEST,FOLLOW_RESPONSE, LOGOUT_REQUEST, LOGOUT_RESPONSE
 class Client():
 
     def __init__(self):
@@ -80,7 +80,7 @@ class Client():
         s = socket.socket(AF_INET, SOCK_STREAM)
         s.connect((self.recent_entry_point(), PORT_GENERAL_ENTRY))
         s.send(send_data)
-        recv_bytes = s.recv()
+        recv_bytes = s.recv(1024)
         recv_data = util.decode(recv_bytes)
 
         #TODO Falta agregar un try para cuando se vaya la conexion
@@ -88,6 +88,32 @@ class Client():
             if recv_data['succesed']:
                 self.token = recv_data['token']
                 return True, recv_data['token']
+            else:
+                # print(recv_data['error'])
+                return False, recv_data['error']
+        else:
+            # print('Que mierda me respondieron?')
+            return False, 'Que mierda me respondieron?'
+    
+    def logout(self, nick, token):
+
+        message = {
+            'type': CLIENT,
+            'proto': LOGOUT_REQUEST,
+            'nick': nick,
+            'token': token,        
+        }
+        send_data = util.encode(message)
+        s = socket.socket(AF_INET, SOCK_STREAM)
+        s.connect((self.recent_entry_point(), PORT_GENERAL_ENTRY))
+        s.send(send_data)
+        recv_bytes = s.recv(1024)
+        recv_data = util.decode(recv_bytes)
+
+        #TODO Falta agregar un try para cuando se vaya la conexion
+        if recv_data['proto'] == LOGOUT_RESPONSE:
+            if recv_data['succesed']:                
+                return True, None
             else:
                 # print(recv_data['error'])
                 return False, recv_data['error']

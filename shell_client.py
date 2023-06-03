@@ -161,6 +161,32 @@ class ShellClient():
                 inp = input()
                 if inp != 'r':
                     return
+
+    def sign_out(self):
+        
+        util.clear()
+        self.print_Dwitter()
+        print()
+        while True:
+            print('<--- Cerrar Sesion --->')
+            print('Paso 1: Si esta seguro que desea cerrar sesion escriba "q"')
+            print('> ', end='')
+            if input() == 'q':                                
+                succesed, error = self.client.logout(self.nick, self.token)
+                if succesed:
+                    print('SESION FINALIZADA CON EXITO!')
+                    print('Pulse ENTER para volver al menu principal')
+                    input()
+                    return
+                else:
+                    print('Ha ocurrido un ERROR :"(')
+                    print('<+++++ Error +++++>')
+                    print(error)
+                    print('<+++++|+++++|+++++>')
+                    print('Escriba "r" para repetir el proceso o pulse simplemente ENTER para regresar al menu principal')
+                    inp = input()
+                    if inp != 'r':
+                        return
                 
     def see_profile(self):
 

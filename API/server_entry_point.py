@@ -12,7 +12,8 @@ try:
     from util import CLIENT, ENTRY_POINT, LOGGER,LOGIN_REQUEST, LOGIN_RESPONSE,\
         NEW_LOGGER_RESPONSE, NEW_LOGGER_REQUEST, REGISTER_RESPONSE, REGISTER_REQUEST,\
         CREATE_TWEET_REQUEST, CREATE_TWEET_RESPONSE, PROFILE_REQUEST, PROFILE_RESPONSE,\
-        FOLLOW_REQUEST,FOLLOW_RESPONSE
+        FOLLOW_REQUEST,FOLLOW_RESPONSE, LOGOUT_REQUEST, LOGOUT_RESPONSE, ALIVE_REQUEST,\
+        ALIVE_RESPONSE
     import view
 except:
     import API.util as util
@@ -23,7 +24,8 @@ except:
     from API.util import CLIENT, ENTRY_POINT, LOGGER,LOGIN_REQUEST, LOGIN_RESPONSE,\
         NEW_LOGGER_RESPONSE, NEW_LOGGER_REQUEST, REGISTER_RESPONSE, REGISTER_REQUEST,\
         CREATE_TWEET_REQUEST, CREATE_TWEET_RESPONSE, PROFILE_REQUEST, PROFILE_RESPONSE,\
-        FOLLOW_REQUEST,FOLLOW_RESPONSE
+        FOLLOW_REQUEST,FOLLOW_RESPONSE, LOGOUT_REQUEST, LOGOUT_RESPONSE, ALIVE_REQUEST,\
+        ALIVE_RESPONSE
     import API.view as view
     
 class EntryPointServerTheaded(MultiThreadedServer):
@@ -59,10 +61,15 @@ class EntryPointServerTheaded(MultiThreadedServer):
                 self.create_tweet_request_from_client(id, task, event, data)
             elif protocol == PROFILE_REQUEST:
                 self.profile_request_from_client(id, task, event, data)
+            elif protocol == LOGOUT_REQUEST:
+                self.logout_request_from_client(id, task, event, data)
             else:
                 print('Q pifia metes?')
         elif type_msg == ENTRY_POINT:
-            pass
+            if protocol == ALIVE_RESPONSE:
+                self.alive_response_from_entry_point(id, task, event, data)
+            else:
+                print('Q pifia metes?')
         elif type_msg == LOGGER:
             if protocol == LOGIN_RESPONSE:
                 self.login_response_from_logger(id, task, event, data)
@@ -72,6 +79,10 @@ class EntryPointServerTheaded(MultiThreadedServer):
                 self.create_tweet_response_from_logger(id, task, event, data)
             elif protocol == PROFILE_RESPONSE:
                 self.profile_response_from_logger(id, task, event, data)
+            elif protocol == LOGOUT_RESPONSE:
+                self.logout_response_from_logger(id, task, event, data)
+            if protocol == ALIVE_RESPONSE:
+                self.alive_response_from_loggers(id, task, event, data)
             else:
                 print('Q pifia metes?')
         else:
@@ -138,6 +149,71 @@ class EntryPointServerTheaded(MultiThreadedServer):
         self.storage.delete_state(state.id)
 
     def login_response_from_logger(self, id:int,task: tuple[socket,object],event:Event, data: dict):
+
+        self.stalker_loggers.update_IP(task[1][0])
+        state = self.storage.get_state(data['id_request'])
+        task[0].close()
+        state.desired_data = data
+        state.hold_event.set()
+
+    #------------------ LOGOUT ------------------#
+
+    def logout_request_from_client(self, id:int,task: tuple[socket,object],event:Event, data: dict):        
+
+        nick = data['nick']
+        token = data['token']
+
+        state = self.storage.insert_state()
+        message = {
+            'type': ENTRY_POINT,
+            'proto': LOGIN_REQUEST,
+            'nick': nick,
+            'token': token,
+            'id_request': state.id
+        }
+
+        s = socket.socket(AF_INET, SOCK_STREAM)
+        ip_logger = self.dispatcher()
+        s.connect((ip_logger, PORT_GENERAL_LOGGER))
+        data_bytes = util.encode(message)
+        s.send(data_bytes)
+        # new_data_bytes = s.recv(1024)
+        s.close()
+
+        if event.wait(10):
+            state = self.storage.get_state(state.id)
+            if state is None:
+                #TODO ver que pasa aqui !!!!!!!!!!
+                task[0].close()
+                return
+
+            if state.desired_data['succesed']:
+                msg = {
+                    'type': ENTRY_POINT,
+                    'proto': LOGOUT_RESPONSE,
+                    'succesed': True,
+                    'error': None
+                }
+            else:
+                msg = {
+                    'type': ENTRY_POINT,
+                    'proto': LOGOUT_RESPONSE,
+                    'succesed': False,                    
+                    'error': state.desired_data['error']
+                }
+        else:
+            msg = {
+                'type': ENTRY_POINT,
+                'proto': LOGOUT_RESPONSE,
+                'succesed': False,                
+                'error': 'Tiempo de espera agotado.'
+            }
+
+        task[0].send(util.encode(msg))
+        task[0].close()
+        self.storage.delete_state(state.id)
+
+    def logout_response_from_logger(self, id:int,task: tuple[socket,object],event:Event, data: dict):
 
         self.stalker_loggers.update_IP(task[1][0])
         state = self.storage.get_state(data['id_request'])
