@@ -79,7 +79,7 @@ class ShellClient():
                     pass
                 # Seguir Usuario
                 elif args[0] == "6" and len(args) == 1:
-                    pass
+                    self.follow()
                 # Cerrar Sesion
                 elif args[0] == "7" and len(args) == 1:
                     pass

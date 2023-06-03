@@ -30,7 +30,8 @@ class EntryPointServerTheaded(MultiThreadedServer):
 
     def __init__(self, port: int, task_max: int, thread_count: int, timeout: int, parse_func):
         super().__init__(port, task_max, thread_count, timeout, parse_func)
-        self.stalker_loggers = Stalker(ENTRY_POINT)                        
+        self.stalker_loggers = Stalker(ENTRY_POINT)
+        self.stalker_entrys = Stalker(ENTRY_POINT)
 
     def dispatcher(self):
         l = self.stalker_loggers.list
@@ -436,3 +437,37 @@ class EntryPointServerTheaded(MultiThreadedServer):
         task[0].close()
         state.desired_data = data
         state.hold_event.set()
+
+
+    #------------------ ALIVE ------------------#
+
+    def alive_request_to_entry_point(self):
+
+        msg_bytes = util.encode(self.stalker_entrys.msg_stalk())
+        for dir in self.stalker_entrys.dieds_dirs(30):
+
+            #TODO agregar try
+            s = socket.socket(AF_INET, SOCK_STREAM)
+            s.connect((dir, PORT_GENERAL_ENTRY))
+            s.send(msg_bytes)
+            s.close()
+
+
+    def alive_request_to_entry_point(self):
+
+        msg_bytes = util.encode(self.stalker_loggers.msg_stalk())
+        for dir in self.stalker_loggers.dieds_dirs(60):
+            
+            #TODO agregar try
+            s = socket.socket(AF_INET, SOCK_STREAM)
+            s.connect((dir, PORT_GENERAL_LOGGER))
+            s.send(msg_bytes)
+            s.close()
+
+    def alive_response_from_entry_point(self, id:int,task: tuple[socket,object],event:Event, data: dict):
+        #TODO agregar condicional para cuando no este
+        self.stalker_entrys.update_IP(task[1][0])
+
+    def alive_response_from_loggers(self, id:int,task: tuple[socket,object],event:Event, data: dict):
+        #TODO agregar condicional para cuando no este
+        self.stalker_loggers.update_IP(task[1][0])

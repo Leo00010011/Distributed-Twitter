@@ -130,6 +130,16 @@ class Stalker:
         '''
         _, dir = random.choices(self.list,weights=range(len(self.list), 0, -1),k=1)[0]
         return dir
+    
+    def dieds_dirs(self, umbral_time):
+
+        real_time = time.time()
+        dieds = []
+        for i in len(self.list):
+            t, dir = self.list[i]
+            if real_time - t >= umbral_time:
+                dieds.append(dir)
+        return dieds
 
     def msg_stalk(self):
         '''
@@ -137,7 +147,7 @@ class Stalker:
         '''
         msg = {
             'type': self.type,
-            'proto': 1000, # Definir el protocolo de estar vivo.
+            'proto': ALIVE_REQUEST, # Definir el protocolo de estar vivo.
         }
         return msg
 
