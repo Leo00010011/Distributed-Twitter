@@ -16,7 +16,7 @@ class User(Model):
 
 class Follow(Model):
     follower = ForeignKeyField(User)
-    followed = ForeignKeyField(User)
+    followed =  CharField(16)
 
     class Meta:
         database = main_db 
