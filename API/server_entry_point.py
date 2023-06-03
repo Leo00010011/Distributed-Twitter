@@ -112,15 +112,13 @@ class EntryPointServerTheaded(MultiThreadedServer):
             print(ip_logger)
             s.connect((ip_logger, PORT_GENERAL_LOGGER))
             data_bytes = util.encode(message)
-            s.send(data_bytes)
-            # new_data_bytes = s.recv(1024)
+            s.send(data_bytes)            
             s.close()
         except Exception as e:
             msg = {
                 'type': ENTRY_POINT,
                 'proto': LOGIN_RESPONSE,
-                'succesed': False,
-                'token': None,
+                'succesed': False,                
                 'error': 'no existe'
             }
             print(msg)
@@ -198,22 +196,29 @@ class EntryPointServerTheaded(MultiThreadedServer):
             'id_request': state.id
         }
         try:
+            print(message)
             s = socket.socket(AF_INET, SOCK_STREAM)
+            print(s)
             ip_logger = self.dispatcher()
+            print(ip_logger)
             s.connect((ip_logger, PORT_GENERAL_LOGGER))
             data_bytes = util.encode(message)
-            s.send(data_bytes)
-            # new_data_bytes = s.recv(1024)
+            s.send(data_bytes)            
             s.close()
         except Exception as e:
             msg = {
                 'type': ENTRY_POINT,
                 'proto': LOGOUT_RESPONSE,
                 'succesed': False,                
-                'error': 'Conexioncon Logger perdida'
+                'error': str(e)
             }
+            print(msg)
+            print(task[0])
             task[0].send(util.encode(msg))
+            print('intermedio')
             task[0].close()
+            print('enviado')
+            return
 
         if state.event.wait(10):
             state = storage.get_state(state.id)
@@ -274,13 +279,30 @@ class EntryPointServerTheaded(MultiThreadedServer):
             'id_request': state.id
         }
 
-        s = socket.socket(AF_INET, SOCK_STREAM)
-        ip_logger = self.dispatcher()
-        s.connect((ip_logger, PORT_GENERAL_LOGGER))
-        data_bytes = util.encode(message)
-        s.send(data_bytes)
-        # new_data_bytes = s.recv(1024)
-        s.close()
+        try:
+            print(message)
+            s = socket.socket(AF_INET, SOCK_STREAM)
+            print(s)
+            ip_logger = self.dispatcher()
+            print(ip_logger)
+            s.connect((ip_logger, PORT_GENERAL_LOGGER))
+            data_bytes = util.encode(message)
+            s.send(data_bytes)            
+            s.close()
+        except Exception as e:
+            msg = {
+                'type': ENTRY_POINT,
+                'proto': REGISTER_RESPONSE,
+                'succesed': False,                
+                'error': str(e)
+            }
+            print(msg)
+            print(task[0])
+            task[0].send(util.encode(msg))
+            print('intermedio')
+            task[0].close()
+            print('enviado')
+            return
 
         if state.event.wait(10):
             state = storage.get_state(state.id)
@@ -359,13 +381,30 @@ class EntryPointServerTheaded(MultiThreadedServer):
             'id_request': state.id
         }
 
-        s = socket.socket(AF_INET, SOCK_STREAM)
-        ip_logger = self.dispatcher()
-        s.connect((ip_logger, PORT_GENERAL_LOGGER))
-        data_bytes = util.encode(message)
-        s.send(data_bytes)
-        #new_data_bytes = s.recv(1024)
-        s.close()
+        try:
+            print(message)
+            s = socket.socket(AF_INET, SOCK_STREAM)
+            print(s)
+            ip_logger = self.dispatcher()
+            print(ip_logger)
+            s.connect((ip_logger, PORT_GENERAL_LOGGER))
+            data_bytes = util.encode(message)
+            s.send(data_bytes)            
+            s.close()
+        except Exception as e:
+            msg = {
+                'type': ENTRY_POINT,
+                'proto': CREATE_TWEET_RESPONSE,
+                'succesed': False,                
+                'error': str(e)
+            }
+            print(msg)
+            print(task[0])
+            task[0].send(util.encode(msg))
+            print('intermedio')
+            task[0].close()
+            print('enviado')
+            return
 
         if state.event.wait(10):
             state = storage.get_state(state.id)
@@ -429,13 +468,30 @@ class EntryPointServerTheaded(MultiThreadedServer):
             'id_request': state.id
         }
 
-        s = socket.socket(AF_INET, SOCK_STREAM)
-        ip_logger = self.dispatcher()
-        s.connect((ip_logger, PORT_GENERAL_LOGGER))
-        data_bytes = util.encode(message)
-        s.send(data_bytes)
-        #new_data_bytes = s.recv(1024)
-        s.close()
+        try:
+            print(message)
+            s = socket.socket(AF_INET, SOCK_STREAM)
+            print(s)
+            ip_logger = self.dispatcher()
+            print(ip_logger)
+            s.connect((ip_logger, PORT_GENERAL_LOGGER))
+            data_bytes = util.encode(message)
+            s.send(data_bytes)            
+            s.close()
+        except Exception as e:
+            msg = {
+                'type': ENTRY_POINT,
+                'proto': PROFILE_RESPONSE,
+                'succesed': False,                
+                'error': str(e)
+            }
+            print(msg)
+            print(task[0])
+            task[0].send(util.encode(msg))
+            print('intermedio')
+            task[0].close()
+            print('enviado')
+            return
 
         if state.event.wait(10):
             state = storage.get_state(state.id)
@@ -499,13 +555,30 @@ class EntryPointServerTheaded(MultiThreadedServer):
             'id_request': state.id
         }
 
-        s = socket.socket(AF_INET, SOCK_STREAM)
-        ip_logger = self.dispatcher()
-        s.connect((ip_logger, PORT_GENERAL_LOGGER))
-        data_bytes = util.encode(message)
-        s.send(data_bytes)
-        #new_data_bytes = s.recv(1024)
-        s.close()
+        try:
+            print(message)
+            s = socket.socket(AF_INET, SOCK_STREAM)
+            print(s)
+            ip_logger = self.dispatcher()
+            print(ip_logger)
+            s.connect((ip_logger, PORT_GENERAL_LOGGER))
+            data_bytes = util.encode(message)
+            s.send(data_bytes)            
+            s.close()
+        except Exception as e:
+            msg = {
+                'type': ENTRY_POINT,
+                'proto': FOLLOW_RESPONSE,
+                'succesed': False,                
+                'error': str(e)
+            }
+            print(msg)
+            print(task[0])
+            task[0].send(util.encode(msg))
+            print('intermedio')
+            task[0].close()
+            print('enviado')
+            return
 
         if state.event.wait(10):
             state = storage.get_state(state.id)
@@ -557,11 +630,13 @@ class EntryPointServerTheaded(MultiThreadedServer):
         msg_bytes = util.encode(self.stalker_entrys.msg_stalk())
         for dir in self.stalker_entrys.dieds_dirs(30):
 
-            #TODO agregar try
-            s = socket.socket(AF_INET, SOCK_STREAM)
-            s.connect((dir, PORT_GENERAL_ENTRY))
-            s.send(msg_bytes)
-            s.close()
+            try:
+                s = socket.socket(AF_INET, SOCK_STREAM)
+                s.connect((dir, PORT_GENERAL_ENTRY))
+                s.send(msg_bytes)
+                s.close()
+            except:
+                print('Conexion perdida con: ', dir)
 
 
     def alive_request_to_entry_point(self):
@@ -569,11 +644,14 @@ class EntryPointServerTheaded(MultiThreadedServer):
         msg_bytes = util.encode(self.stalker_loggers.msg_stalk())
         for dir in self.stalker_loggers.dieds_dirs(60):
             
-            #TODO agregar try
-            s = socket.socket(AF_INET, SOCK_STREAM)
-            s.connect((dir, PORT_GENERAL_LOGGER))
-            s.send(msg_bytes)
-            s.close()
+            try:
+                s = socket.socket(AF_INET, SOCK_STREAM)
+                s.connect((dir, PORT_GENERAL_LOGGER))
+                s.send(msg_bytes)
+                s.close()
+            except:
+                print('Conexion perdida con: ', dir)
+
 
     def alive_response_from_entry_point(self, id:int,task: tuple[socket.socket,object],event:Event, storage, data: dict):
         #TODO agregar condicional para cuando no este
