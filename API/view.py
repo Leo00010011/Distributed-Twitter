@@ -55,13 +55,13 @@ def CreateToken(user_id):
     Token.create(id= user_id, token= token)
     return token
 
-def CheckToken(token):
+def CheckToken(token, nick):
     '''
     Devuelve el ID del usuario asignado al token
     En caso de no ser encontrado devuelve None
     '''
     try:
-        return Token.select().where(Token.token == token).get().id
+        return Token.select().where(Token.token == token).get().user_id.alias == nick
     except:
         return None    
 
@@ -77,11 +77,10 @@ def RemoveToken(user_id, token):
     '''
     Token.delete().where(Token.token == token, Token.id == user_id).execute()
 
-def CreateTweet(token, text, nick):
+def CreateTweet(text, nick):
 
-    user_id = CheckToken(token)
+    user_id = User.select().where(User.alias == nick).get().id
     if user_id:
-        if User.select().where(User.alias == nick).get().id != user_id: return False
         Tweet.create(user_id= user_id, text= text)
         return True
     else:
@@ -99,6 +98,59 @@ def CreateReTweet(user_id, tweet_id):
 def GetUserPaswordRange(hash_limit, offset, limit):
     return User.select().where(User.alias_hash <= hash_limit).oreder_by(User.alias).offset(offset).limit(limit)
 
+def GetTweetRange(hash_limit, offset, limit):
+    return Tweet.select().where(Tweet.user.alias_hash <= hash_limit).oreder_by(Tweet.user.alias).offset(offset).limit(limit)
+
+def GetRetweetRange(hash_limit, offset, limit):
+    return Retweet.select().where(Retweet.user.alias_hash <= hash_limit).oreder_by(Retweet.user.alias).offset(offset).limit(limit)
+
+def GetFollowRange(hash_limit, offset, limit):
+    return Follow.select().where(Follow.follower.alias_hash <= hash_limit).oreder_by(Tweet.follower.alias).offset(offset).limit(limit)
+
+def GetTokenRange(hash_limit, offset, limit):
+    return Token.select().where(Token.user_id.alias_hash <= hash_limit).oreder_by(Token.user_id.alias).offset(offset).limit(limit)
+
 
 def DeleteUserRange(hash_limit):
-    User.delte().where(User.alias_hash <= hash_limit)
+    try :
+        User.delte().where(User.alias_hash <= hash_limit)
+        return True
+    except:
+        return False
+def DeleteTweetRange(hash_limit):
+    try :
+        Tweet.select().where(Tweet.user.alias_hash <= hash_limit) 
+        return True
+    except:
+        return False
+def DeleteRetweetRange(hash_limit):
+    try :
+        Retweet.select().where(Retweet.user.alias_hash <= hash_limit) 
+        return True
+    except:
+        return False
+def DeleteFollowRange(hash_limit):
+    try :
+        Follow.select().where(Follow.follower.alias_hash <= hash_limit) 
+        return True
+    except:
+        return False
+def DeleteTokenRange(hash_limit):
+    try :
+        Token.select().where(Token.user_id.alias_hash <= hash_limit) 
+        return True
+    except:
+        return False
+
+def CreateFollow(nick1,nick2):
+    try:
+        user = User.select().where(User.alias == nick1).get()
+        Follow.create(user,nick2)
+        return True
+    except:
+        return False 
+
+def GetProfileRange(nick, offset, limit):
+    return Tweet.select().where(Tweet.user.alias == nick).oreder_by(Tweet.date.descendent()).offset(offset).limit(limit)
+
+
