@@ -12,6 +12,7 @@ alphabet = string.ascii_letters + string.digits
 CLIENT = 0
 ENTRY_POINT = 1
 LOGGER = 2
+CHORD = 3
 
 # Protocolos de pedidos
 LOGIN_REQUEST = 0
@@ -41,6 +42,7 @@ NEW_ENTRYPOINT_REQUEST = 23
 NEW_ENTRYPOINT_RESPONSE = 24
 LOGOUT_REQUEST = 25
 LOGOUT_RESPONSE = 26
+GET_TOKEN = 27
 
 # Puertos de escucha
 PORT_GENERAL_ENTRY = 15069
@@ -111,8 +113,9 @@ class Stalker:
             if item[1] == dir:
                 self.list[i] = (time.time(), dir)
                 self.list.sort()
-                return
-        self.list.append(time.time(), dir)      
+                return True
+        self.list.append((time.time(), dir))
+        return False
 
     def extract_IP(self, dir):
         '''
