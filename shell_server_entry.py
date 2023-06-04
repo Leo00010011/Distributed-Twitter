@@ -32,8 +32,7 @@ class ShellServerEntry():
                 time.sleep(10)
                 print('Servicio detenido')
             elif args[0] == 'start':
-                t = Thread(target= self.server.start_server)
-                t.start()
+                self.server.start()
             elif args[0] == 'exit':
                 exit()
             else:

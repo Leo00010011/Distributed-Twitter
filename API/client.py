@@ -19,10 +19,14 @@ except:
 class Client():
 
     def __init__(self):
-        self.entry_point_ips = ['entry']        
+        self.entry_point_ips = []
         self.__recent_entry_point_ip = None
         self.token = None
         self.nick = None   
+
+        with open('entrys.txt', 'r') as ft:
+            for ip in ft.readlines():
+                self.entry_point_ips.append(ip)
         
     def recent_entry_point_ip(self):
         if self.__recent_entry_point_ip is None:
@@ -77,7 +81,7 @@ class Client():
             'proto': LOGIN_REQUEST,
             'nick': nick,
             'password': password,        
-        }
+        }        
         try:
             send_data = util.encode(message)
             s = socket.socket(AF_INET, SOCK_STREAM)
@@ -86,6 +90,7 @@ class Client():
             recv_bytes = s.recv(10240)
             recv_data = util.decode(recv_bytes)
         except Exception as e:
+            self.__recent_entry_point_ip = None
             return False, str(e)
         
         if recv_data['proto'] == LOGIN_RESPONSE:
