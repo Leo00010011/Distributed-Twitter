@@ -29,9 +29,25 @@ class Client():
                 self.entry_point_ips.append(ip)
         
     def recent_entry_point_ip(self):
+        return 'entry'
         if self.__recent_entry_point_ip is None:
             self.__recent_entry_point_ip =rand.choice(self.entry_point_ips)            
         return self.__recent_entry_point_ip
+
+    def try_send_recv(self, message, count_bytes_recv=10240):
+
+        for ip in [self.recent_entry_point_ip()] + rand.shuffle(self.entry_point_ips.copy()):            
+            try:
+                send_data = util.encode(message)
+                s = socket.socket(AF_INET, SOCK_STREAM)
+                s.connect((ip, PORT_GENERAL_ENTRY))
+                s.send(send_data)
+                recv_bytes = s.recv(count_bytes_recv)
+                recv_data = util.decode(recv_bytes)
+                return True, recv_data
+            except Exception as e:
+                print(e)
+        return False, e
 
     def sign_up(self, name, nick, password):
         '''

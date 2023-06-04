@@ -117,6 +117,7 @@ class ShellClient():
                 inp = input()
                 if inp != 'r':
                     return
+                continue
             #if password != repeat_password:
             succesed, error = self.client.sign_up(name, nick, password)
             if succesed:

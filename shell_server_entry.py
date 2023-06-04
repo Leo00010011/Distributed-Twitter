@@ -26,10 +26,9 @@ class ShellServerEntry():
                     print('comando invalido')
             elif args[0] == 'clear':
                 util.clear()
-            elif args[0] == 'stop':
-                self.server.end_event.set()
+            elif args[0] == 'stop':                
                 print('Deteniendo servicio')
-                time.sleep(10)
+                self.server.stop()
                 print('Servicio detenido')
             elif args[0] == 'start':
                 self.server.start()
