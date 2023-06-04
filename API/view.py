@@ -30,20 +30,16 @@ def GetTokenLogIn(alias, password):
     se busca que este usuario exista y se le asigna un token
     en caso de que si y se devuelve este Token
     '''
-    user = User.select().where(User.alias == alias)
-    if  user:
-        if user.get().password == password:
-            return CreateToken(user.get().id)
-    return False
+    try:
+        user = User.select().where(User.alias == alias).get()
+        if  user:
+            if user.password == password:
+                return CreateToken(user)
+        return False
+    except:
+        return False
 
-def LogIn(alias, password):
-
-    user = CheckUserAlias(alias)
-    if user and user.password == password:
-           return view.CreateToken(user.id)
-    return None
-
-def CreateToken(user_id):
+def CreateToken(user):
     '''
     Crea un token aleatoria de 64 bytes para asignarlo a un usuario.
     Si al generar el token este estuviera asignado, se genera otro, hasta
@@ -52,22 +48,20 @@ def CreateToken(user_id):
     token = gen_token(64)
     while CheckToken(token):
         token = gen_token(64)
-    Token.create(id= user_id, token= token)
+    Token.create(user_id= user, token= token)
     return token
 
 def CreateTokenForced(nick, token):
     user = CheckUserAlias(nick)
     Token.create(user_id= user, token= token)
 
-def CheckToken(token, nick):
-    '''
-    Devuelve el ID del usuario asignado al token
-    En caso de no ser encontrado devuelve None
-    '''
+def CheckToken(token, nick = None):
     try:
-        return Token.select().where(Token.token == token).get().user_id.alias == nick
+        if nick:
+            return Token.select().where(Token.token == token).get().user_id.alias == nick
+        return Token.select().where(Token.token == token).get()
     except:
-        return None    
+        return False
 
 def ForceRemoveToken(token):
     '''
@@ -80,76 +74,84 @@ def RemoveToken(nick, token):
     Elimina de forma segura el token
     '''
     try:
-        Token.delete().where(Token.token == token, Token.user_id.alias == nick).execute()
+        user = CheckUserAlias(nick)
+        Token.delete().where(Token.token == token, Token.user_id == user).execute()
         return True
     except:
         return False
 def CreateTweet(text, nick, date=None):
-
-    user_id = User.select().where(User.alias == nick).get().id
-    if user_id:
-        if date is None:
-            Tweet.create(user_id= user_id, text= text)
-        else: Tweet.create(user_id= user_id, text= text, tweet_date = date)
-        return True
-    else:
+    try:
+        user = User.select().where(User.alias == nick).get()
+        if user:
+            if date is None:
+                Tweet.create(user= user, text= text)
+            else: Tweet.create(user= user, text= text, tweet_date = date)
+            return True
+        else:
+            return False
+    except:
         return False
 
 def CreateReTweet(user_id, nick, date, retweet_date = None):
     try:
         user_id = CheckUserAlias(user_id)
         if retweet_date is None:
-            ReTweet.create(user = user_id, nick=tweet_id, date_tweet = date)
+            ReTweet.create(user = user_id, nick= nick, date_tweet = date)
         else: 
-            ReTweet.create(user = user_id, nick=tweet_id, date_tweet = date, date_retweet = retweet_date)
+            ReTweet.create(user = user_id, nick= nick, date_tweet = date, date_retweet = retweet_date)
         return True
     except: 
         return False
 
 
-def GetUserPaswordRange(hash_limit, offset, limit):
-    return User.select().where(User.alias_hash <= hash_limit).oreder_by(User.alias).offset(offset).limit(limit)
+def GetUserPaswordRange(hash_limit, offset = None, limit = None):
+    if offset is None or limit is None: return User.select().where(User.alias_hash <= hash_limit).order_by(User.alias).dict()[:]
+    return User.select().where(User.alias_hash <= hash_limit).order_by(User.alias).offset(offset).limit(limit).dict()[:]
 
-def GetTweetRange(hash_limit, offset, limit):
-    return Tweet.select().where(Tweet.user.alias_hash <= hash_limit).oreder_by(Tweet.user.alias).offset(offset).limit(limit)
+def GetTweetRange(hash_limit, offset = None, limit = None):
+    if offset is None or limit is None: return Tweet.select().join(User).where(User.alias_hash <= hash_limit).order_by(Tweet.date.desc()).dict()[:]
+    return Tweet.select().join(User).where(User.alias_hash <= hash_limit).order_by(Tweet.date.desc()).offset(offset).limit(limit).dict()[:]
 
-def GetRetweetRange(hash_limit, offset, limit):
-    return Retweet.select().where(Retweet.user.alias_hash <= hash_limit).oreder_by(Retweet.user.alias).offset(offset).limit(limit)
+def GetRetweetRange(hash_limit, offset = None, limit = None):
+    if offset is None or limit is None: return Retweet.select().join(User).where(User.alias_hash <= hash_limit).order_by(Retweet.date_retweet.desc()).dict()[:]
+    return Retweet.select().join(User).where(User.alias_hash <= hash_limit).order_by(Retweet.date_retweet.desc()).offset(offset).limit(limit).dict()[:]
 
-def GetFollowRange(hash_limit, offset, limit):
-    return Follow.select().where(Follow.follower.alias_hash <= hash_limit).oreder_by(Tweet.follower.alias).offset(offset).limit(limit)
+def GetFollowRange(hash_limit, offset = None, limit = None):
+    if offset is None or limit is None: return Follow.select().join(User).where(User.alias_hash <= hash_limit).order_by(User.alias.desc()).dict()[:]
+    return Follow.select().join(User).where(User.alias_hash <= hash_limit).order_by(User.alias.desc()).offset(offset).limit(limit).dict()[:]
 
-def GetTokenRange(hash_limit, offset, limit):
-    return Token.select().where(Token.user_id.alias_hash <= hash_limit).oreder_by(Token.user_id.alias).offset(offset).limit(limit)
+def GetTokenRange(hash_limit, offset = None, limit = None):
+    if offset is None or limit is None: return Token.select().join(User).where(User.alias_hash <= hash_limit).order_by(User.alias.desc()).dict()[:]
+    return Token.select().join(User).where(User.alias_hash <= hash_limit).order_by(User.alias.desc()).offset(offset).limit(limit).dict()[:]
 
 
 def DeleteUserRange(hash_limit):
     try :
-        User.delte().where(User.alias_hash <= hash_limit)
+        User.delete().where(User.alias_hash <= hash_limit).execute()
         return True
     except:
         return False
 def DeleteTweetRange(hash_limit):
     try :
-        Tweet.select().where(Tweet.user.alias_hash <= hash_limit) 
+        Tweet.delete().join(User).where(User.alias_hash <= hash_limit).execute() 
         return True
     except:
         return False
 def DeleteRetweetRange(hash_limit):
     try :
-        Retweet.select().where(Retweet.user.alias_hash <= hash_limit) 
+        Retweet.delete().join(User).where(User.alias_hash <= hash_limit).execute() 
         return True
     except:
         return False
 def DeleteFollowRange(hash_limit):
     try :
-        Follow.select().where(Follow.follower.alias_hash <= hash_limit) 
+        Follow.delete().join(User).where(User.alias_hash <= hash_limit).execute() 
         return True
     except:
         return False
 def DeleteTokenRange(hash_limit):
     try :
-        Token.select().where(Token.user_id.alias_hash <= hash_limit) 
+        Token.delete().join(User).where(User.alias_hash <= hash_limit).execute() 
         return True
     except:
         return False
@@ -157,20 +159,20 @@ def DeleteTokenRange(hash_limit):
 def CreateFollow(nick1,nick2):
     try:
         user = User.select().where(User.alias == nick1).get()
-        Follow.create(user,nick2)
+        Follow.create(follower =user, followed = nick2)
         return True
     except:
         return False 
 
 def GetProfileRange(nick, offset, limit):
-    return (Tweet.select().where(Tweet.user.alias == nick).oreder_by(Tweet.date.descendent()).offset(offset).limit(limit), Retweet.select().where(Retweet.user.alias == nick).oreder_by(Retweet.date_retweet.descendent()).offset(offset).limit(limit))
+    return (Tweet.select().join(User).where(User.alias == nick).order_by(Tweet.date.descendent()).offset(offset).limit(limit)[:], Retweet.select().join(User).where(User.alias == nick).order_by(Retweet.date_retweet.descendent()).offset(offset).limit(limit)[:])
 
 
 def GetFollowed(nick):
-    return Follow.select().where(Follow.follower.alias == nick)
+    return Follow.select().join(User).where(User.alias == nick)[:]
 
-def ChechTweet(nick, date):
-    try: 
-        return Tweet.select().where(Tweet.nick == nick, Tweet.date == date).get()
+def CheckTweet(nick, date):
+    try:    
+        return Tweet.select().join(User).where(User.alias == nick, Tweet.date == date).get()
     except:
         return False
