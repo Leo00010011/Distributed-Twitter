@@ -147,7 +147,7 @@ class Stalker:
 
         real_time = time.time()
         dieds = []
-        for i in len(self.list):
+        for i in range(len(self.list)):
             t, dir = self.list[i]
             if real_time - t >= umbral_time:
                 dieds.append(dir)

@@ -139,21 +139,20 @@ class MultiThreadedServer:
             executor.submit(end_event_client,self.end_event,self.port)
             for id in range(self.thread_count):
                 executor.submit(self.consumer_func,id,self.task_list,self.end_event,self.parse_func,self.timeout, self.storage)
-                self.current_thread_count += 1
-                print(self.current_thread_count)
+                self.current_thread_count += 1                
             s = socket(family = AF_INET, type = SOCK_STREAM)            
             s.bind(("0.0.0.0", self.port))
             s.listen(5)
             print('Listen')
             while True:
                 (socket_client, addr_client) = s.accept()
-                print('Accept')
-                print(addr_client)
+                #print('Accept')
+                #print(addr_client)
                 if(self.end_event.is_set()):
-                    print('Aqui no debe entrar')
+                    #print('Aqui no debe entrar')
                     socket_client.close()
                     break
-                print('Aqui si debe entrar')
+                #print('Aqui si debe entrar')
                 self.task_list.put((socket_client, addr_client))
             s.close()
             print('ENDED listening thread')        
