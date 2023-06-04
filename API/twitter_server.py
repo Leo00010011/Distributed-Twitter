@@ -8,16 +8,22 @@ try:
     import util
     from server import Server
     from util import Stalker, Dispatcher
-    from util import CHORD, CLIENT, ENTRY_POINT, LOGGER,LOGIN_REQUEST, LOGIN_RESPONSE, NEW_LOGGER_RESPONSE, NEW_LOGGER_REQUEST, CHORD_RESPONSE, GET_TOKEN, CHORD_REQUEST, ALIVE_REQUEST, ALIVE_RESPONSE, REGISTER_REQUEST, REGISTER_RESPONSE
-    from util import TRANSFERENCE_REQUEST, TRANSFERENCE_RESPONSE, TRANSFERENCE_OVER, LOGOUT_REQUEST, LOGOUT_RESPONSE
+    from util import CLIENT, ENTRY_POINT, LOGGER, CHORD
+    from util import LOGIN_REQUEST, LOGIN_RESPONSE, CHORD_REQUEST, CHORD_RESPONSE, NEW_LOGGER_REQUEST, NEW_LOGGER_RESPONSE, ALIVE_REQUEST, ALIVE_RESPONSE, REGISTER_REQUEST, REGISTER_RESPONSE, TRANSFERENCE_REQUEST
+    from util import TRANSFERENCE_RESPONSE, TRANSFERENCE_OVER, CREATE_TWEET_REQUEST, CREATE_TWEET_RESPONSE, RETWEET_REQUEST, RETWEET_RESPONSE, FOLLOW_REQUEST, FOLLOW_RESPONSE, FEED_REQUEST, FEED_RESPONSE
+    from util import PROFILE_REQUEST, PROFILE_RESPONSE, NEW_ENTRYPOINT_REQUEST, NEW_ENTRYPOINT_RESPONSE, LOGOUT_REQUEST, LOGOUT_RESPONSE, GET_TOKEN, RECENT_PUBLISHED_REQUEST, RECENT_PUBLISHED_RESPONSE, CHECK_TWEET_REQUEST, CHECK_TWEET_RESPONSE
+    from util import PORT_GENERAL_ENTRY, CHORD_PORT, PORT_GENERAL_LOGGER
     import view
     from threaded_server import MultiThreadedServer
 except:
     import API.util as util
     from API.server import Server
     from API.util import Stalker, Dispatcher
-    from API.util import CHORD, CLIENT, ENTRY_POINT, LOGGER,LOGIN_REQUEST, LOGIN_RESPONSE, NEW_LOGGER_RESPONSE, NEW_LOGGER_REQUEST, CHORD_RESPONSE, GET_TOKEN, CHORD_REQUEST, ALIVE_REQUEST, ALIVE_RESPONSE, REGISTER_REQUEST, REGISTER_RESPONSE
-    from API.util import TRANSFERENCE_REQUEST, TRANSFERENCE_RESPONSE,TRANSFERENCE_OVER, LOGOUT_REQUEST, LOGOUT_RESPONSE
+    from API.util import CLIENT, ENTRY_POINT, LOGGER, CHORD
+    from API.util import LOGIN_REQUEST, LOGIN_RESPONSE, CHORD_REQUEST, CHORD_RESPONSE, NEW_LOGGER_REQUEST, NEW_LOGGER_RESPONSE, ALIVE_REQUEST, ALIVE_RESPONSE, REGISTER_REQUEST, REGISTER_RESPONSE, TRANSFERENCE_REQUEST
+    from API.util import TRANSFERENCE_RESPONSE, TRANSFERENCE_OVER, CREATE_TWEET_REQUEST, CREATE_TWEET_RESPONSE, RETWEET_REQUEST, RETWEET_RESPONSE, FOLLOW_REQUEST, FOLLOW_RESPONSE, FEED_REQUEST, FEED_RESPONSE
+    from API.util import PROFILE_REQUEST, PROFILE_RESPONSE, NEW_ENTRYPOINT_REQUEST, NEW_ENTRYPOINT_RESPONSE, LOGOUT_REQUEST, LOGOUT_RESPONSE, GET_TOKEN, RECENT_PUBLISHED_REQUEST, RECENT_PUBLISHED_RESPONSE, CHECK_TWEET_REQUEST, CHECK_TWEET_RESPONSE
+    from API.util import PORT_GENERAL_ENTRY, CHORD_PORT, PORT_GENERAL_LOGGER
     import API.view as view
     from API.threaded_server import MultiThreadedServer
 
@@ -26,7 +32,7 @@ class TweeterServer(MultiThreadedServer):
     
     def __init__(self,port: int, task_max: int, thread_count: int, timout: int, parse_func):
 
-        MultiThreadedServer.__init__(self,port, task_max, thread_count, timout, LoggerServer.switch)
+        MultiThreadedServer.__init__(self,port, task_max, thread_count, timout, TweeterServer.switch)
 
     def switch(id:int, task: tuple[socket,object], event:Event, storage):
         '''
@@ -44,55 +50,60 @@ class TweeterServer(MultiThreadedServer):
             data_dict = util.decode(data_bytes)
             type_rqst = data_dict["type"]       
             proto_rqst = data_dict["proto"]
+        
         except Exception as e:
             print(e)
             return
         
         if type_rqst == ENTRY_POINT:
+            
             if proto_rqst == LOGIN_REQUEST:
-                LoggerServer.login_request(socket_client, addr_client, data_dict)
+                TweeterServer.login_request(socket_client, addr_client, data_dict, storage)
+            elif proto_rqst == LOGOUT_REQUEST:
+                TweeterServer.logout_request(socket_client, addr_client, data_dict,storage)
+            elif proto_rqst == REGISTER_REQUEST:
+                TweeterServer.register_request(socket_client, addr_client, data_dict, storage)
+            
+            elif proto_rqst in  (CREATE_TWEET_REQUEST, FOLLOW_REQUEST, RETWEET_REQUEST, FEED_REQUEST, PROFILE_REQUEST):
+                TweetServer.tweet_request(socket_client, addr_client, data_dict, storage)
+            
+            elif proto_rqst == ALIVE_REQUEST:
+                TweeterServer.alive_request(socket_client, addr_client, data_dict, storage)
             elif proto_rqst == NEW_LOGGER_RESPONSE: 
                 pass #TODO 
-            elif proto_rqst == ALIVE_REQUEST:
-                LoggerServer.alive_request(socket_client, addr_client, data_dict)
-            elif proto_rqst == REGISTER_REQUEST:
-                LoggerServer.register_request(socket_client, addr_client, data_dict, storage)
-            elif proto_rqst == LOGOUT_REQUEST:
-                LoggerServer.logout_request(socket_client, addr_client, data_dict,storage)
-            elif proto_rqst in  (CREATE_TWEET_REQUEST, FOLLOW_REQUEST, RETWEET_REQUEST):
-                TweetServer.tweet_request(socket_client, addr_client, data_dict, storage)
-            elif proto_rqst == ALIVE_REQUEST:
-                LoggerServer.alive_request(socket_client, addr_client, data_dict)
+                
       
         elif type_rqst == LOGGER:
-            if proto_rqst == CHORD_RESPONSE:
-                LoggerServer.chord_response(socket_client, addr_client, data_dict,storage)
-            elif proto_rqst == LOGIN_REQUEST:
-                LoggerServer.get_token(socket_client, addr_client, data_dict)
-            elif proto_rqst in  (LOGIN_RESPONSE,REGISTER_RESPONSE, LOGIN_RESPONSE): 
-                LoggerServer.set_data(socket_client, addr_client, data_dict,storage)
-            elif proto_rqst == REGISTER_REQUEST:
-                LoggerServer.get_register(socket_client, addr_client, data_dict)
-            elif proto_rqst == TRANSFERENCE_REQUEST:
-                LoggerServer.data_transfer_request(socket_client, addr_client, data_dict)
-            elif proto_rqst == TRANSFERENCE_RESPONSE:
-                LoggerServer.data_transfer_response(socket_client, addr_client, data_dict)
-            elif proto_rqst == TRANSFERENCE_OVER:
-                LoggerServer.data_transfer_over(socket_client, addr_client, data_dict)
+            
+            if proto_rqst == LOGIN_REQUEST:
+                TweeterServer.get_token(socket_client, addr_client, data_dict, storage)
             elif proto_rqst == LOGOUT_REQUEST:
-                LoggerServer.get_logout(socket_client, addr_client, data_dict)
-        
+                TweeterServer.get_logout(socket_client, addr_client, data_dict, storage)
+            elif proto_rqst == REGISTER_REQUEST:
+                TweeterServer.get_register(socket_client, addr_client, data_dict, storage)
+            
+            elif proto_rqst in  (LOGIN_RESPONSE, REGISTER_RESPONSE, CHORD_RESPONSE, LOGOUT_RESPONSE): 
+                TweeterServer.set_data(socket_client, addr_client, data_dict,storage)
+            
         elif type_rqst == TWEET:
-            if proto_rqst == CHORD_RESPONSE:
-                LoggerServer.chord_response(socket_client, addr_client, data_dict,storage)
-            elif proto_rqst == CREATE_TWEET_REQUEST:
-                TweetServer.create_tweet(socket_client, addr_client, data_dict)
-            elif proto_rqst == RETWEET_REQUEST: 
-                LoggerServer.set_token(socket_client, addr_client, data_dict,storage)
+            
+            if proto_rqst == CREATE_TWEET_REQUEST:
+                TweetServer.create_tweet(socket_client, addr_client, data_dict, storage)
             elif proto_rqst == FOLLOW_REQUEST:
-                LoggerServer.create_follow(socket_client, addr_client, data_dict,storage)
+                TweeterServer.create_follow(socket_client, addr_client, data_dict,storage)
+            elif proto_rqst == RETWEET_REQUEST: 
+                TweeterServer.create_retweet(socket_client, addr_client, data_dict,storage)
             elif proto_rqst == FEED_REQUEST:
-                LoggerServer.set_register(socket_client, addr_client, data_dict, storage)
+                TweeterServer.feed_get(socket_client, addr_client, data_dict, storage)
+            elif proto_rqst == PROFILE_REQUEST:
+                TweeterServer.profile_get(socket_client, addr_client, data_dict, storage)
+            elif proto_rqst == RECENT_PUBLISHED_REQUEST:
+                TweetServer.recent_publish(socket_client, addr_client, data_dict, storage)
+            elif proto_rqst == CHECK_TWEET_REQUEST:
+                TweetServer.tweet_check(socket_client, addr_client, data_dict, storage)
+            elif proto_rqst in (CREATE_TWEET_RESPONSE, FOLLOW_RESPONSE, RETWEET_RESPONSE, FEED_RESPONSE, PROFILE_RESPONSE, RECENT_PUBLICHED_RESPONSE, CHECK_TWEET_RESPONSE):
+                TweeterServer.set_data(socket_client, addr_client, data_dict,storage)
+        
         else: 
             pass
         #TODO error de tipo
@@ -113,14 +124,13 @@ class TweeterServer(MultiThreadedServer):
         nick = data_dict['nick']
         data = {
                 "type" : LOGGER,
-                "ptoto": CHORD_REQUEST,
+                "proto": CHORD_REQUEST,
                 "hash": nick,
                 "ID_request": state.id,
-                "IP": self.socket_server
         } #Construir la peticion del chord
 
         skt = socket.socket(AF_INET,SOCK_STREAM)
-        skt.connect(('127.0.0.1',8023))
+        skt.connect(('127.0.0.1',CHORD_PORT))
         skt.send(util.encode(data))
         
         w = state.hold_event.wait(5)
@@ -138,7 +148,7 @@ class TweeterServer(MultiThreadedServer):
                 "ID_request": state2.id,
             }
             skt = socket.socket(AF_INET,SOCK_STREAM)
-            skt.connect((state.desired_data['IP'],8023))
+            skt.connect((state.desired_data['IP'],CHORD_PORT))
             skt.send(util.encode(data))
 
             w = state2.event_holder.wait(5)
@@ -177,14 +187,13 @@ class TweeterServer(MultiThreadedServer):
         nick = data_dict['nick']
         data = {
                 "type" : LOGGER,
-                "ptoto": CHORD_REQUEST,
+                "proto": CHORD_REQUEST,
                 "Hash": nick,
                 "ID_request": state.id,
-                "IP": self.socket_server
         } #Construir la peticion del chord
         
         skt = socket.socket(AF_INET,SOCK_STREAM)
-        skt.connect(('127.0.0.1',8023))
+        skt.connect(('127.0.0.1',CHORD_PORT))
         skt.send(util.encode(data))
         
         w = state.hold_event.wait(5)
@@ -202,7 +211,7 @@ class TweeterServer(MultiThreadedServer):
                 "ID_request": state2.id,
             }
             skt = socket.socket(AF_INET,SOCK_STREAM)
-            skt.connect((state.desired_data['IP'],8023))
+            skt.connect((state.desired_data['IP'],CHORD_PORT))
             skt.send(util.encode(data))
 
             w = state2.event_holder.wait(5)
@@ -234,14 +243,13 @@ class TweeterServer(MultiThreadedServer):
         nick = data_dict['nick']
         data = {
                 "type" : LOGGER,
-                "ptoto": CHORD_REQUEST,
+                "proto": CHORD_REQUEST,
                 "Hash": nick,
                 "ID_request": state.id,
-                "IP": self.socket_server
         } #Construir la peticion del chord
         
         skt = socket.socket(AF_INET,SOCK_STREAM)
-        skt.connect(('127.0.0.1',8023))
+        skt.connect(('127.0.0.1',CHORD_PORT))
         skt.send(util.encode(data))
         
         w = state.hold_event.wait(5)
@@ -259,7 +267,7 @@ class TweeterServer(MultiThreadedServer):
                 "ID_request": state2.id,
             }
             skt = socket.socket(AF_INET,SOCK_STREAM)
-            skt.connect((state.desired_data['IP'],8023))
+            skt.connect((state.desired_data['IP'],CHORD_PORT))
             skt.send(util.encode(data))
 
             w = state2.event_holder.wait(5)
@@ -284,25 +292,7 @@ class TweeterServer(MultiThreadedServer):
         socket_client.send(util.encode(data))
         socket_client.close()
 
-    def chord_response(socket_client, addr_client, data_dict, storage):
-        '''
-        Contactar directamente con el Logger que contiene el loggeo de un usuario 
-        -------------
-        `data_dict['IP']`: IP al que escribir
-        `data_dict['IDrequest']`: Configuracion del ususario
-        '''
-
-        state = storage.get_state(data_dict['IDrequest'])
-        
-
-        data = {
-            "IP": data_dict['IP'],
-        }
-        state.desired_data = data
-        socket_client.close()
-        state.hold_event.set()
-
-    def get_register(socket_client, addr_client, data_dict):
+    def get_register(socket_client, addr_client, data_dict, storage):
         '''
         Registrar al usuario
         -------------
@@ -352,7 +342,7 @@ class TweeterServer(MultiThreadedServer):
         state.hold_event.set()
         socket_client.close()
 
-    def get_token(socket_client, addr_client, data_dict):
+    def get_token(socket_client, addr_client, data_dict, storage):
         '''
         Loggear al usuario
         -------------
@@ -394,7 +384,7 @@ class TweeterServer(MultiThreadedServer):
         socket_client.send(util.encode(data))
         socket_client.close()
 
-    def get_logout(socket_client, addr_client, data_dict):
+    def get_logout(socket_client, addr_client, data_dict, storage):
         nick = data_dict["nick"]
         token = data_dict["token"]
         if view.CheckToken(token, nick):
@@ -423,16 +413,15 @@ class TweeterServer(MultiThreadedServer):
         socket_client.send(util.encode(data))
         socket_client.close()
 
-    def alive_request(socket_client, addr_client, data_dict):
+    def alive_request(socket_client, addr_client, data_dict, storage):
         data = {
             'type': LOGGER,
             'proto': ALIVE_RESPONSE,
-            'IP': self.IP
         }
         socket_client.send(util.encode(data))
         socket_client.close()
 
-    def data_transfer_request(socket_client, addr_client, data_dict):
+    def data_transfer_request(socket_client, addr_client, data_dict, storage):
         """
         Peticion de transferencia de datos
         datadict['number']: Numero de bloques enviados y recibidos
@@ -499,7 +488,7 @@ class TweeterServer(MultiThreadedServer):
         socket_client.send(util.encode(data))
         socket_client.close()
 
-    def data_transfer_response(socket_client, addr_client, data_dict):        
+    def data_transfer_response(socket_client, addr_client, data_dict, storage):        
         table = data_dict['table']
         for i in range(10):
             data = data_dict.get(f'date_{i}',None)
@@ -554,7 +543,7 @@ class TweeterServer(MultiThreadedServer):
         socket_client.send(util.encode(data))
         socket_client.close()
             
-    def data_transfer_over(socket_client, addr_client, data_dict):
+    def data_transfer_over(socket_client, addr_client, data_dict, storage):
         if not data_dict['replication']:
             limit  = data_dict['chord_id']
             table = data_dict['table']
@@ -579,7 +568,6 @@ class TweeterServer(MultiThreadedServer):
             'type': TWEET,
             'proto': CHORD_REQUEST,
             'hash': data_dict['nick'],
-            'IP': self.socket_server,
             "ID_request": state.id,
         }
         
@@ -622,7 +610,7 @@ class TweeterServer(MultiThreadedServer):
         socket_client.send(util.encode(data))
         socket_client.close()
 
-    def create_tweet(socket_client, addr_client, data_dict):
+    def create_tweet(socket_client, addr_client, data_dict, storage):
         try:
             if view.CheckToken(data_dict['token'], data_dict['nick']) and view.CreateTweet( data_dict['text'], data_dict['nick']): 
                 data = {
@@ -652,7 +640,6 @@ class TweeterServer(MultiThreadedServer):
                         'type': TWEET,
                         'proto': CHORD_REQUEST,
                         'hash': data_dict['nick'],
-                        'IP': self.socket_server,
                         "ID_request": state.id,
                     }
                 skt = socket.socket(AF_INET,SOCK_STREAM)
@@ -735,7 +722,6 @@ class TweeterServer(MultiThreadedServer):
                      'type': TWEET,
                      'proto': CHORD_REQUEST,
                      'hash': t.nick,
-                     'IP': self.socket_server,
                      "ID_request": state.id,
                  }
         
@@ -798,7 +784,6 @@ class TweeterServer(MultiThreadedServer):
                         'type': TWEET,
                         'proto': CHORD_REQUEST,
                         'hash': data_dict['nick2'],
-                        'IP': self.socket_server,
                         "ID_request": state.id,
                     }
                 
@@ -869,7 +854,6 @@ class TweeterServer(MultiThreadedServer):
                         'type': TWEET,
                         'proto': CHORD_REQUEST,
                         'hash': data_dict['nick2'],
-                        'IP': self.socket_server,
                         "ID_request": state.id,
                     }
                 
@@ -886,7 +870,7 @@ class TweeterServer(MultiThreadedServer):
                     state2 = storage.get_state()
                     data = {
                             'type': TWEET,
-                            'proto': CHECK_TWEET,
+                            'proto': CHECK_TWEET_REQUEST,
                             'nick': data_dict['nick2'],
                             'date': data_dict['date'],
                             "ID_request": state2.id,
@@ -955,7 +939,6 @@ class TweeterServer(MultiThreadedServer):
                     'type': TWEET,
                     'proto': CHORD_REQUEST,
                     'hash': f.followed,
-                    'IP': self.socket_server,
                     "ID_request": state.id,
                 }
 
@@ -1005,5 +988,34 @@ class TweeterServer(MultiThreadedServer):
         socket_client.send(util.encode(msg))
         socket_clien.close()
                       
+    def tweet_check(socket_client, addr_client, data_dict,storage):
+        nick = data_dict['nick']
+        date = data_dict.get['date']
 
-          
+        if view.ChechTweet(nick, date):
+            data = {
+                'type': TWEET,
+                'proto': CHECK_TWEET_RESPONSE,
+                'exist':True,
+                'ID_request':data_dict['ID_request']
+            }
+            socket_client.send(util.encode(data))
+            socket_client.close()
+            return
+        
+        data = {
+                'type': TWEET,
+                'proto': CHECK_TWEET_RESPONSE,
+                'exist':False,
+                'ID_request':data_dict['ID_request']
+            }
+        socket_client.send(util.encode(data))
+        socket_client.close()
+        
+    def recent_publish(socket_client, addr_client, data_dict,storage):
+        nick = data_dict['nick']
+        tweet, retweet = view.GetProfileRange(nick, 0, 100)
+        #TODO seleccionar un tweet o u retweet random para feed, en caso de
+        #TODO retweet haer chord y pedir el texto del retweet
+
+    
