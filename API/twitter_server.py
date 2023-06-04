@@ -3,7 +3,6 @@ from socket import AF_INET, SOCK_STREAM
 from threading import Thread, Event
 import hashlib
 
-
 try:
     import util
     from server import Server
@@ -116,7 +115,7 @@ class TweeterServer(MultiThreadedServer):
         `data_dict['nick']`: Alias de usuario
         `data_dict['password']`: Contrasenna
         '''
-  
+        socket_client.close()
         #pedir un evento para m\'aquina de estado 
         state = storage.insert_state()
 
@@ -126,7 +125,7 @@ class TweeterServer(MultiThreadedServer):
                 "type" : LOGGER,
                 "proto": CHORD_REQUEST,
                 "hash": nick,
-                "ID_request": state.id,
+                "id_request": state.id,
         } #Construir la peticion del chord
 
         skt = socket.socket(AF_INET,SOCK_STREAM)
@@ -145,7 +144,7 @@ class TweeterServer(MultiThreadedServer):
                 "proto": REGISTER_REQUEST,
                 "nick": data_dict["nick"],
                 "password": data_dict["password"],
-                "ID_request": state2.id,
+                "id_request": state2.id,
             }
             skt = socket.socket(AF_INET,SOCK_STREAM)
             skt.connect((state.desired_data['IP'],CHORD_PORT))
@@ -158,6 +157,10 @@ class TweeterServer(MultiThreadedServer):
             if w:
                 #reenviar mensaje de autenticacion
                 try:
+                    state.desired_data['id_request'] = data_dict['id_request']
+
+                    socket_client = socket.socket(AF_INET,SOCK_STREAM)
+                    socket_client.connect((addr_client[0],PORT_GENERAL_ENTRY))
                     socket_client.send(util.encode(state.desired_data))
                     socket_client.close()
                 except:
@@ -165,11 +168,14 @@ class TweeterServer(MultiThreadedServer):
 
         data = {
                     'type':LOGGER,
-                    'proto': LOGIN_RESPONSE,
+                    'proto': REGISTER_RESPONSE,
                     'succesed': False,
-                    'token': None,
                     'error': 'Something went wrong in the network connection',
+                    'id_request': data_dict['id_request']
            }
+        
+        socket_client = socket.socket(AF_INET,SOCK_STREAM)
+        socket_client.connect((addr_client[0],PORT_GENERAL_ENTRY))
         socket_client.send(util.encode(data))
         socket_client.close()
     
@@ -180,6 +186,8 @@ class TweeterServer(MultiThreadedServer):
         `data_dict['nick']`: Nick
         `data_dict['password']`: Contrasenna
         '''
+
+        socket_client.close()
         #pedir un evento para m\'aquina de estado 
         state = storage.insert_state()
 
@@ -189,7 +197,7 @@ class TweeterServer(MultiThreadedServer):
                 "type" : LOGGER,
                 "proto": CHORD_REQUEST,
                 "Hash": nick,
-                "ID_request": state.id,
+                "id_request": state.id,
         } #Construir la peticion del chord
         
         skt = socket.socket(AF_INET,SOCK_STREAM)
@@ -208,7 +216,7 @@ class TweeterServer(MultiThreadedServer):
                 "proto": LOGIN_REQUEST,
                 "nick": data_dict["nick"],
                 "password": data_dict["password"],
-                "ID_request": state2.id,
+                "id_request": state2.id,
             }
             skt = socket.socket(AF_INET,SOCK_STREAM)
             skt.connect((state.desired_data['IP'],CHORD_PORT))
@@ -221,8 +229,14 @@ class TweeterServer(MultiThreadedServer):
             if w:
                 #reenviar mensaje de autenticacion
                 try:
-                   socket_client.send(util.encode(state.desired_data))
-                   socket_client.close()
+                    state.desired_data['id_request'] = data_dict['id_request']
+
+                    socket_client = socket.socket(AF_INET,SOCK_STREAM)
+                    socket_client.connect((addr_client[0],PORT_GENERAL_ENTRY))
+                    socket_client.send(util.encode(state.desired_data))
+                    socket_client.close()
+                    return
+
                 except:
                     pass
 
@@ -232,11 +246,18 @@ class TweeterServer(MultiThreadedServer):
                 'succesed': False,
                 'token': None,
                 'error': 'Something went wrong in the network connection',
+                'id_request': data_dict['id_request']
            }
+        
+        socket_client = socket.socket(AF_INET,SOCK_STREAM)
+        socket_client.connect((addr_client[0],PORT_GENERAL_ENTRY))
         socket_client.send(util.encode(data))
         socket_client.close()
 
     def logout_request(socket_client, addr_client, data_dict, storage):
+        
+
+        socket_client.close()
         state = storage.insert_state()
 
         #Hay que usar Chord para ver quien tiene a ese Nick
@@ -244,8 +265,8 @@ class TweeterServer(MultiThreadedServer):
         data = {
                 "type" : LOGGER,
                 "proto": CHORD_REQUEST,
-                "Hash": nick,
-                "ID_request": state.id,
+                "hash": nick,
+                "id_request": state.id,
         } #Construir la peticion del chord
         
         skt = socket.socket(AF_INET,SOCK_STREAM)
@@ -263,12 +284,13 @@ class TweeterServer(MultiThreadedServer):
                 "type": LOGGER,
                 "proto": LOGOUT_REQUEST,
                 "nick": data_dict["nick"],
-                "password": data_dict["password"],
-                "ID_request": state2.id,
+                "token": data_dict["token"],
+                "id_request": state2.id,
             }
             skt = socket.socket(AF_INET,SOCK_STREAM)
             skt.connect((state.desired_data['IP'],CHORD_PORT))
             skt.send(util.encode(data))
+
 
             w = state2.event_holder.wait(5)
             state = storage.get_state(state2.id)
@@ -277,8 +299,13 @@ class TweeterServer(MultiThreadedServer):
             if w:
                 #reenviar mensaje de autenticacion
                 try:
-                   socket_client.send(util.encode(state.desired_data))
-                   socket_client.close()
+                    state.desired_data['id_request'] = data_dict['id_request']
+
+                    socket_client = socket.socket(AF_INET,SOCK_STREAM)
+                    socket_client.connect((addr_client[0],PORT_GENERAL_ENTRY))
+                    socket_client.send(util.encode(state.desired_data))
+                    socket_client.close()
+                    return
                 except:
                     pass
 
@@ -286,11 +313,15 @@ class TweeterServer(MultiThreadedServer):
                 'type':LOGGER,
                 'proto': LOGOUT_RESPONSE,
                 'succesed': False,
-                'token': None,
                 'error': 'Something went wrong in the network connection',
+                'id_request': data_dict['id_request']
            }
-        socket_client.send(util.encode(data))
+        
+        socket_client = socket.socket(AF_INET,SOCK_STREAM)
+        socket_client.connect((addr_client[0],PORT_GENERAL_ENTRY))
+        socket_client.send(util.encode(state.desired_data))
         socket_client.close()
+        
 
     def get_register(socket_client, addr_client, data_dict, storage):
         '''
@@ -312,7 +343,7 @@ class TweeterServer(MultiThreadedServer):
                     'proto': REQUEST_RESPONSE,
                     'succesed': True,
                     'error': None,
-                    'ID_request': data_dict['ID_request']
+                    'id_request': data_dict['id_request']
                 }
             except:
                 data = {
@@ -320,7 +351,7 @@ class TweeterServer(MultiThreadedServer):
                     'proto': REQUEST_RESPONSE,
                     'succesed': False,
                     'error': 'Error trying to register',
-                    'ID_request': data_dict['ID_request']
+                    'id_request': data_dict['id_request']
                 }
         else:
             data = {
@@ -328,14 +359,14 @@ class TweeterServer(MultiThreadedServer):
                     'proto': REQUEST_RESPONSE,
                     'succesed': False,
                     'error': 'User Nick must be unique',
-                    'ID_request': data_dict['ID_request']
+                    'id_request': data_dict['id_request']
                 }
         
         socket_client.send(util.encode(data))
         socket_client.close()  
 
     def set_data(socket_client, addr_client, data_dict, storage):
-        Id = data_dict["ID_request"]
+        Id = data_dict["id_request"]
         state = storage.get_state(Id)
    
         state.desired_data = data_dict
@@ -360,7 +391,7 @@ class TweeterServer(MultiThreadedServer):
                     'succesed': True,
                     'token': Token,
                     'error': None,
-                    'ID_request': data_dict['ID_request']
+                    'id_request': data_dict['id_request']
                 }
             else:
                 data={
@@ -369,7 +400,7 @@ class TweeterServer(MultiThreadedServer):
                     'succesed': False,
                     'token': None,
                     'error': "Invalid nick or password",
-                    'ID_request': data_dict['ID_request']
+                    'id_request': data_dict['id_request']
                 }     
         except:
                 data={
@@ -378,7 +409,7 @@ class TweeterServer(MultiThreadedServer):
                     'succesed': False,
                     'token': None,
                     'error': "User not register",
-                    'ID_request': data_dict['ID_request']
+                    'id_request': data_dict['id_request']
                 }
         
         socket_client.send(util.encode(data))
@@ -393,13 +424,15 @@ class TweeterServer(MultiThreadedServer):
                     'type':LOGGER,
                     'proto': LOGOUT_REQUEST,
                     'succesed': True,
-                    'error': None
+                    'error': None,
+                    'id_request':data_dict['id_request']
                 }
             else:
                 data ={
                     'type':LOGGER,
                     'proto': LOGOUT_REQUEST,
                     'succesed': False,
+                    'id_request':data_dict['id_request'],
                     'error': "Error removing login"
                 }
         else:
@@ -407,6 +440,7 @@ class TweeterServer(MultiThreadedServer):
                     'type':LOGGER,
                     'proto': LOGOUT_REQUEST,
                     'succesed': False,
+                    'id_request':data_dict['id_request'],
                     'error': "Invalid user session data"
                 }
         
@@ -424,32 +458,32 @@ class TweeterServer(MultiThreadedServer):
     def data_transfer_request(socket_client, addr_client, data_dict, storage):
         """
         Peticion de transferencia de datos
-        datadict['number']: Numero de bloques enviados y recibidos
+        datadict['block']: Numero de bloques enviados y recibidos
         datadict['chord_id']: Nuemro a partir del cual buscar
         """
 
-        number = data_dict['number']
+        block = data_dict['block']
         hash_limit = data_dict['chord_id']
         table = data_dict['table']
 
         data = {
             'type': LOGGER,
             'proto': TRANSFERENCE_RESPONSE,
-            'number': number + 1,
+            'block': block + 1,
             'chord_id': hash_limit,
             'table': table
         }
 
         if table == 'tweet':
-            table_data = view.GetTweetRange(hash_limit, (number +1)*10,10) 
+            table_data = view.GetTweetRange(hash_limit, (block +1)*10,10) 
         if table == 'retweet':
-            table_data = view.GetRetweetRange(hash_limit, (number +1)*10,10) 
+            table_data = view.GetRetweetRange(hash_limit, (block +1)*10,10) 
         if table == 'follow':
-            table_data = view.GetFollowRange(hash_limit, (number +1)*10,10) 
+            table_data = view.GetFollowRange(hash_limit, (block +1)*10,10) 
         if table == 'token':
-            table_data = view.GetTokenRange(hash_limit, (number +1)*10,10) 
+            table_data = view.GetTokenRange(hash_limit, (block +1)*10,10) 
         if table == 'user':
-            table_data = view.GetUserPaswordRange(hash_limit, (number+1) * 10,10)
+            table_data = view.GetUserPaswordRange(hash_limit, (block+1) * 10,10)
         
         i = 0
         for d in table_data:
@@ -537,7 +571,7 @@ class TweeterServer(MultiThreadedServer):
                 'type': LOGGER,
                 'proto': TRANSFERENCE_REQUEST,
                 'chord_id': data_dict['chord_id'],
-                'number':data_dict['number'],
+                'block':data_dict['block'],
                 'table': data_dict['table']
             }
         socket_client.send(util.encode(data))
@@ -560,7 +594,9 @@ class TweeterServer(MultiThreadedServer):
         
         socket_client.close()
 
-    def tweet_request(socket_client, addr_client, data_dict, storage):       
+    def tweet_request(socket_client, addr_client, data_dict, storage): 
+
+        socket_client.close()    
         #pedir un evento para m\'aquina de estado 
         state = storage.insert_state()
 
@@ -568,7 +604,7 @@ class TweeterServer(MultiThreadedServer):
             'type': TWEET,
             'proto': CHORD_REQUEST,
             'hash': data_dict['nick'],
-            "ID_request": state.id,
+            "id_request": state.id,
         }
         
         skt = socket.socket(AF_INET,SOCK_STREAM)
@@ -583,6 +619,7 @@ class TweeterServer(MultiThreadedServer):
             #Escribirle al server que tiene al usuario
             state2 = storage.get_state()
             data_dict['type'] = TWEET
+            data_dict['id_request'] = state2.id
             
             skt = socket.socket(AF_INET,SOCK_STREAM)
             skt.connect((state.desired_data['IP'], PORT_GENERAL_LOGGER))
@@ -595,9 +632,12 @@ class TweeterServer(MultiThreadedServer):
             if w:
                 #reenviar mensaje de autenticacion
                 try:
+                    state.desired_data['id_request'] = data_dict['id_request']
 
-                   socket_client.send(util.encode(state.desired_data))
-                   socket_client.close()
+                    socket_client = socket.socket(AF_INET,SOCK_STREAM)
+                    socket_client.connect((addr_client[0],PORT_GENERAL_ENTRY))
+                    socket_client.send(util.encode(state.desired_data))
+                    socket_client.close()
                 except:
                     pass
 
@@ -606,8 +646,11 @@ class TweeterServer(MultiThreadedServer):
                 'proto': proto[0:len(proto)- 7] + 'RESPONSE',
                 'succesed': False,
                 'error': 'Something went wrong in the network connection',
+                'id_request':  data_dict['id_request']
         }
-        socket_client.send(util.encode(data))
+        socket_client = socket.socket(AF_INET,SOCK_STREAM)
+        socket_client.connect((addr_client[0],PORT_GENERAL_ENTRY))
+        socket_client.send(util.encode(state.desired_data))
         socket_client.close()
 
     def create_tweet(socket_client, addr_client, data_dict, storage):
@@ -617,7 +660,8 @@ class TweeterServer(MultiThreadedServer):
                     'type': TWEET,
                     'proto': CREATE_TWEET_RESPONSE,
                     'success': True,
-                    'error':None 
+                    'error':None,
+                    'id_request':data_dict['id_request'] 
                 }
                 socket_client.send(util.encode(data))
                 socket_client.close()
@@ -628,7 +672,8 @@ class TweeterServer(MultiThreadedServer):
                     'type': TWEET,
                     'proto': CREATE_TWEET_RESPONSE,
                     'success': False,
-                    'error': 'Wrong user token' 
+                    'error': 'Wrong user token',
+                    'id_request':data_dict['id_request'] 
                 }
         socket_client.send(util.encode(data))
         socket_client.close()
@@ -640,7 +685,7 @@ class TweeterServer(MultiThreadedServer):
                         'type': TWEET,
                         'proto': CHORD_REQUEST,
                         'hash': data_dict['nick'],
-                        "ID_request": state.id,
+                        "id_request": state.id,
                     }
                 skt = socket.socket(AF_INET,SOCK_STREAM)
                 skt.connect(('127.0.0.1', CHORD_PORT ))
@@ -656,7 +701,8 @@ class TweeterServer(MultiThreadedServer):
                     data = {
                             'type': TWEET,
                             'proto': CHECK_USER_REQUEST,
-                            'nick': data_dict['nick2'] 
+                            'nick': data_dict['nick_profile'],
+                            'id_request':state2.id
                     }
 
                     skt = socket.socket(AF_INET,SOCK_STREAM)
@@ -673,12 +719,12 @@ class TweeterServer(MultiThreadedServer):
                             'proto': FOLLOW_RESPONSE,
                             'success': True,
                             'error':None,
-                            'ID_request': data_dict['ID_request'] 
+                            'id_request': data_dict['id_request'] 
                         }
                         #reenviar mensaje de autenticacion
                         if state.desire_data['exist']:
                             
-                            if not view.CreateFollow(data_dict['nick'], data_dict['nick1']):
+                            if not view.CreateFollow(data_dict['nick'], data_dict['nick_profile']):
                                 data['success'] = False
                                 data['error'] = 'Error when following this user'
                         else:
@@ -698,16 +744,16 @@ class TweeterServer(MultiThreadedServer):
             socket_client.close()
 
     def profile_get(socket_client, addr_client, data_dict,storage):
-        if view.CheckUserAlias(data_dict['nick']):
+        if view.CheckUserAlias(data_dict['nick_profile']):
             msg = {
                 'type':TWEET,
                 'proto': PROFILE_RESPONSE,
                 'succesed': True,
                 'error': None,
                 'data_profile': {},
-                'ID_request': data_dict['ID_request']
+                'id_request': data_dict['id_request']
             }
-            prof = view.GetProfileRange(data_dict['nick'], data_dict['number']*10, 10)
+            prof = view.GetProfileRange(data_dict['nick_profile'], data_dict['block']*10, 10)
             i=0
             for t in pref[0]:
                 msg['data_profile'][str(t.date)] = (t.text, None) 
@@ -722,7 +768,7 @@ class TweeterServer(MultiThreadedServer):
                      'type': TWEET,
                      'proto': CHORD_REQUEST,
                      'hash': t.nick,
-                     "ID_request": state.id,
+                     "id_request": state.id,
                  }
         
                 skt = socket.socket(AF_INET,SOCK_STREAM)
@@ -741,7 +787,7 @@ class TweeterServer(MultiThreadedServer):
                      'proto': GET_TWEET,
                      'nick': t.nick,
                      'date': t.tweet_date,
-                     "ID_request": state.id,
+                     "id_request": state2.id,
                 }
                 
                 skt = socket.socket(AF_INET,SOCK_STREAM)
@@ -771,7 +817,7 @@ class TweeterServer(MultiThreadedServer):
                 'succesed': False,
                 'error': "Wrong user name profile",
                 'data_profile': {},
-                'ID_request': data_dict['ID_request']
+                'id_request': data_dict['id_request']
             }
 
             socket_client.send(util.encode(msg))
@@ -783,8 +829,8 @@ class TweeterServer(MultiThreadedServer):
                 data = {
                         'type': TWEET,
                         'proto': CHORD_REQUEST,
-                        'hash': data_dict['nick2'],
-                        "ID_request": state.id,
+                        'hash': data_dict['nick_profile'],
+                        "id_request": state.id,
                     }
                 
                 skt = socket.socket(AF_INET,SOCK_STREAM)
@@ -801,8 +847,8 @@ class TweeterServer(MultiThreadedServer):
                     data = {
                             'type': TWEET,
                             'proto': PROFILE_GET,
-                            'nick': data_dict['nick2'],
-                            "ID_request": state2.id,
+                            'nick': data_dict['nick_profile'],
+                            "id_request": state2.id,
                     }
 
                     skt = socket.socket(AF_INET,SOCK_STREAM)
@@ -815,7 +861,7 @@ class TweeterServer(MultiThreadedServer):
 
                     data = state.desire_data
                     if w:
-                        data['ID_request'] = data_dict['ID_request']
+                        data['id_request'] = data_dict['id_request']
                        
                         #reenviar mensaje de autenticacion
                     else:
@@ -825,7 +871,7 @@ class TweeterServer(MultiThreadedServer):
                             'proto': PROFILE_RESPONSE,
                             'succesed': False,
                             'error': "Network error",
-                            'ID_request' : data_dict['ID_request']
+                            'id_request' : data_dict['id_request']
                         }
                 else:        
                     data = {
@@ -833,7 +879,7 @@ class TweeterServer(MultiThreadedServer):
                             'proto': PROFILE_RESPONSE,
                             'succesed': False,
                             'error': "Network error",
-                            'ID_request': data_dict['ID_request']
+                            'id_request': data_dict['id_request']
                         }
         else: 
                 data = {
@@ -841,7 +887,7 @@ class TweeterServer(MultiThreadedServer):
                             'proto': PROFILE_RESPONSE,
                             'succesed': False,
                             'error': "Wrong token error",
-                            'ID_request': data_dict['ID_request']
+                            'id_request': data_dict['id_request']
                         }    
             
         socket_client.send(util.encode(data))
@@ -854,7 +900,7 @@ class TweeterServer(MultiThreadedServer):
                         'type': TWEET,
                         'proto': CHORD_REQUEST,
                         'hash': data_dict['nick2'],
-                        "ID_request": state.id,
+                        "id_request": state.id,
                     }
                 
                 skt = socket.socket(AF_INET,SOCK_STREAM)
@@ -873,7 +919,7 @@ class TweeterServer(MultiThreadedServer):
                             'proto': CHECK_TWEET_REQUEST,
                             'nick': data_dict['nick2'],
                             'date': data_dict['date'],
-                            "ID_request": state2.id,
+                            "id_request": state2.id,
                     }
 
                     skt = socket.socket(AF_INET,SOCK_STREAM)
@@ -887,7 +933,7 @@ class TweeterServer(MultiThreadedServer):
                     data = {
                             'type': TWEET,
                             'proto': RETWEET_RESPONSE,
-                            "ID_request": state2.id,
+                            'id_request':data_dict['id_request'],
                             'succesed': True,
                             'error':None
                     }
@@ -905,7 +951,7 @@ class TweeterServer(MultiThreadedServer):
                   data = {
                             'type': TWEET,
                             'proto': RETWEET_RESPONSE,
-                            "ID_request": state2.id,
+                            'id_request':data_dict['id_request'],
                             'succesed': False,
                             'error': 'Network error'
                     } 
@@ -913,7 +959,7 @@ class TweeterServer(MultiThreadedServer):
             data = {
                             'type': TWEET,
                             'proto': RETWEET_RESPONSE,
-                            "ID_request": state2.id,
+                            'id_request':data_dict['id_request'],
                             'succesed': False,
                             'error': 'User is not logged in'
                     }
@@ -929,7 +975,7 @@ class TweeterServer(MultiThreadedServer):
                     'proto': FEED_RESPONSE,
                     'successed': True,
                     'error': None,
-                    "ID_request": data_dict['ID_request'],
+                    "id_request": data_dict['id_request'],
                     'data':{}
                 }
             #TODO pedir de alguna forma un subconjunto de tamanno 20 random
@@ -939,7 +985,7 @@ class TweeterServer(MultiThreadedServer):
                     'type': TWEET,
                     'proto': CHORD_REQUEST,
                     'hash': f.followed,
-                    "ID_request": state.id,
+                    "id_request": state.id,
                 }
 
                 skt = socket.socket(AF_INET,SOCK_STREAM)
@@ -957,7 +1003,7 @@ class TweeterServer(MultiThreadedServer):
                         'type': TWEET,
                         'proto': RECENT_PUBLICHED_REQUEST,
                         'nick': f.followed,
-                        "ID_request": state.id,
+                        "id_request": state.id,
                     }
 
 
@@ -982,7 +1028,7 @@ class TweeterServer(MultiThreadedServer):
                     'proto': FEED_RESPONSE,
                     'successed': False,
                     'error': 'User not logged',
-                    "ID_request": data_dict['ID_request'],
+                    "id_request": data_dict['id_request'],
                     'data':{}
                 }   
         socket_client.send(util.encode(msg))
@@ -997,7 +1043,7 @@ class TweeterServer(MultiThreadedServer):
                 'type': TWEET,
                 'proto': CHECK_TWEET_RESPONSE,
                 'exist':True,
-                'ID_request':data_dict['ID_request']
+                'id_request':data_dict['id_request']
             }
             socket_client.send(util.encode(data))
             socket_client.close()
@@ -1007,7 +1053,7 @@ class TweeterServer(MultiThreadedServer):
                 'type': TWEET,
                 'proto': CHECK_TWEET_RESPONSE,
                 'exist':False,
-                'ID_request':data_dict['ID_request']
+                'id_request':data_dict['id_request']
             }
         socket_client.send(util.encode(data))
         socket_client.close()
@@ -1018,4 +1064,5 @@ class TweeterServer(MultiThreadedServer):
         #TODO seleccionar un tweet o u retweet random para feed, en caso de
         #TODO retweet haer chord y pedir el texto del retweet
 
-    
+    # def new_logger_request(addres):
+    #     socket = 
