@@ -32,6 +32,8 @@ class EntryPointServerTheaded(MultiThreadedServer):
         self.stalker_loggers = Stalker(ENTRY_POINT)
         self.stalker_entrys = Stalker(ENTRY_POINT)  
         self.verbose = True
+        self.execute_pending_tasks = False
+        self.executing = False
         self.pending_tasks = {}
 
         with open('loggers.txt', 'r') as ft:
@@ -44,10 +46,18 @@ class EntryPointServerTheaded(MultiThreadedServer):
                 self.pending_tasks[ip] = []
 
     def start(self):
-        t1 = Thread(target= self.start_server)
-        t2 = Thread(target= self.send_pending_tasks)
+        self.end_event.clear()
+        t1 = Thread(target= self.start_server) 
+        t2 = Thread(target= self.send_pending_tasks, args= [self.end_event])
         t1.start()
         t2.start()
+        self.executing = True
+    
+    def stop(self):
+        self.end_event.set()
+        while self.execute_pending_tasks or self.current_thread_count != 0:
+            pass
+        self.executing = False
 
     def print(self, *str):
         if self.verbose:
@@ -69,9 +79,10 @@ class EntryPointServerTheaded(MultiThreadedServer):
                 continue
             self.pending_tasks[ip] = new_task
     
-    def send_pending_tasks(self):
-        time.sleep(rand.randint(30,50))
-        while True:
+    def send_pending_tasks(self, event: Event):
+        self.execute_pending_tasks = True
+        time.sleep(rand.randint(3,30))
+        while not event.is_set():
             for ip, tasks in self.pending_tasks.items():
                 for i, task in enumerate(tasks.copy()):
                     try:
@@ -89,7 +100,8 @@ class EntryPointServerTheaded(MultiThreadedServer):
                         time.sleep(rand.randint(1,5))
                     except:
                         self.print(f'TAREA PENDIENTE "{task[0]}:{task[1]}" NO enviada a {ip}:{PORT_GENERAL_ENTRY}')
-            time.sleep(rand.randint(30,120))
+            time.sleep(rand.randint(3,30))
+        self.execute_pending_tasks = False
 
 
     def switch(self, id:int,task: tuple[socket.socket,object],event:Event, storage):
