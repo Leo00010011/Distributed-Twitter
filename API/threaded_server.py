@@ -152,4 +152,5 @@ class MultiThreadedServer:
                 self.task_list.put((socket_client, addr_client))
             s.close()
             print('ENDED listening thread')
+        self.end_event.clear()
     
