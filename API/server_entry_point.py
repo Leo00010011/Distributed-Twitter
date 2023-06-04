@@ -29,33 +29,40 @@ class EntryPointServerTheaded(MultiThreadedServer):
 
     def __init__(self, port: int, task_max: int, thread_count: int, timeout: int):
         super().__init__(port, task_max, thread_count, timeout, self.switch)
-        self.stalker_loggers = Stalker(ENTRY_POINT)
+        self.stalker_loggers = Stalker(LOGGER)
         self.stalker_entrys = Stalker(ENTRY_POINT)  
         self.verbose = True
         self.execute_pending_tasks = False
+        self.stalking_entrys = False
+        self.stalking_loggers = False
         self.executing = False
         self.pending_tasks = {}
-
-        with open('loggers.txt', 'r') as ft:
-            for ip in ft.readlines():
-                self.stalker_loggers.update_IP(ip)
+        self.my_ip = socket.gethostbyname(socket.gethostname())
 
         with open('entrys.txt', 'r') as ft:
-            for ip in ft.readlines():
+            for ip in ft.read().split(sep='\n'):
+                if ip == self.my_ip:
+                    continue
                 self.stalker_entrys.update_IP(ip)
                 self.pending_tasks[ip] = []
+        
 
     def start(self):
         self.end_event.clear()
         t1 = Thread(target= self.start_server) 
         t2 = Thread(target= self.send_pending_tasks, args= [self.end_event])
+        t3 = Thread(target= self.alive_request_to_entry_point, args= [self.end_event])
+        t4 = Thread(target= self.alive_request_to_logger, args= [self.end_event])
         t1.start()
         t2.start()
+        t3.start()
+        t4.start()
         self.executing = True
     
     def stop(self):
         self.end_event.set()
-        while self.execute_pending_tasks or self.current_thread_count != 0:
+        while self.execute_pending_tasks or self.current_thread_count != 0 \
+            or self.stalking_entrys or self.stalking_loggers:
             pass
         self.executing = False
 
@@ -63,10 +70,10 @@ class EntryPointServerTheaded(MultiThreadedServer):
         if self.verbose:
             print(*str)
 
-    def dispatcher(self):        
-        l = self.stalker_loggers.list
-        i = rand.randint(0,min(len(l),5))
-        return self.stalker_loggers[i][1]
+    def dispatcher_loggers(self):        
+        l = [ip for _, ip in self.stalker_loggers.listl[max(-5,-len(l)):]]
+        rand.shuffle(l)
+        return l
     
     def add_task(self, new_task):
         for ip, tasks in self.pending_tasks.items():
@@ -102,21 +109,20 @@ class EntryPointServerTheaded(MultiThreadedServer):
                         self.print(f'TAREA PENDIENTE "{task[0]}:{task[1]}" NO enviada a {ip}:{PORT_GENERAL_ENTRY}')
             time.sleep(rand.randint(3,30))
         self.execute_pending_tasks = False
+        print('END Pending Tasks')
 
 
     def switch(self, id:int,task: tuple[socket.socket,object],event:Event, storage):
         
         try:
             data_bytes = task[0].recv(10240)
-            data = util.decode(data_bytes)
-            print(data)
+            data = util.decode(data_bytes)            
             type_msg = data["type"]
             protocol = data["proto"]            
         except Exception as e:
             print(e)
             return
-        
-        print('antes de los ifs')
+                
         if type_msg == CLIENT:
             if protocol == LOGIN_REQUEST:
                 self.login_request_from_client(id, task, event, storage, data)
@@ -131,8 +137,8 @@ class EntryPointServerTheaded(MultiThreadedServer):
             else:
                 print('Q pifia metes?')
         elif type_msg == ENTRY_POINT:
-            if protocol == ALIVE_RESPONSE:
-                self.alive_response_from_entry_point(id, task, event, storage, data)
+            if protocol == ALIVE_REQUEST:                
+                self.alive_response_to_entry_point(id, task, event, storage, data)
             else:
                 print('Q pifia metes?')
         elif type_msg == LOGGER:
@@ -145,14 +151,29 @@ class EntryPointServerTheaded(MultiThreadedServer):
             elif protocol == PROFILE_RESPONSE:
                 self.profile_response_from_logger(id, task, event, storage, data)
             elif protocol == LOGOUT_RESPONSE:
-                self.logout_response_from_logger(id, task, event, storage, data)
-            if protocol == ALIVE_RESPONSE:
-                self.alive_response_from_loggers(id, task, event, storage, data)
+                self.logout_response_from_logger(id, task, event, storage, data)            
             else:
                 print('Q pifia metes?')
         else:
             pass
 
+    def try_send_logger(self, message):
+
+        error = None        
+        for ip in self.dispatcher_loggers():
+            try:
+                send_data = util.encode(message)
+                s = socket.socket(AF_INET, SOCK_STREAM)                
+                s.connect((ip, PORT_GENERAL_ENTRY))
+                s.send(send_data)        
+                s.close()
+                return True, None
+            except Exception as e:                
+                print(f'Logger "{ip}" caido')                
+                error = e
+        return False, error
+    
+    
     #-------------------- LOGIN ----------------------#
 
     def login_request_from_client(self, id:int,task,event:Event, storage, data: dict):        
@@ -170,20 +191,8 @@ class EntryPointServerTheaded(MultiThreadedServer):
             'id_request': state.id
         }
 
-        try_count = 0
-        while try_count < 5:
-            try:
-                s = socket.socket(AF_INET, SOCK_STREAM)   
-                ip_logger = self.dispatcher()
-                s.connect((ip_logger, PORT_GENERAL_LOGGER))
-                data_bytes = util.encode(message)
-                s.send(data_bytes)            
-                s.close()
-                break       
-            except Exception as e:
-                try_count += 1
-                
-        if try_count == 5:
+        good, error = self.try_send_logger(message)
+        if not good:            
             msg = {
                 'type': ENTRY_POINT,
                 'proto': LOGIN_RESPONSE,
@@ -253,21 +262,9 @@ class EntryPointServerTheaded(MultiThreadedServer):
             'token': token,
             'id_request': state.id
         }
-
-        try_count = 0
-        while try_count < 5:
-            try:
-                s = socket.socket(AF_INET, SOCK_STREAM)   
-                ip_logger = self.dispatcher()
-                s.connect((ip_logger, PORT_GENERAL_LOGGER))
-                data_bytes = util.encode(message)
-                s.send(data_bytes)            
-                s.close()
-                break       
-            except Exception as e:
-                try_count += 1
                 
-        if try_count == 5:
+        good, error = self.try_send_logger(message)
+        if not good: 
             msg = {
                 'type': ENTRY_POINT,
                 'proto': LOGOUT_RESPONSE,
@@ -339,20 +336,8 @@ class EntryPointServerTheaded(MultiThreadedServer):
             'id_request': state.id
         }
 
-        try_count = 0
-        while try_count < 5:
-            try:
-                s = socket.socket(AF_INET, SOCK_STREAM)   
-                ip_logger = self.dispatcher()
-                s.connect((ip_logger, PORT_GENERAL_LOGGER))
-                data_bytes = util.encode(message)
-                s.send(data_bytes)            
-                s.close()
-                break       
-            except Exception as e:
-                try_count += 1
-                
-        if try_count == 5:
+        good, error = self.try_send_logger(message)
+        if not good: 
             msg = {
                 'type': ENTRY_POINT,
                 'proto': REGISTER_RESPONSE,
@@ -440,20 +425,8 @@ class EntryPointServerTheaded(MultiThreadedServer):
             'id_request': state.id
         }
 
-        try_count = 0
-        while try_count < 5:
-            try:
-                s = socket.socket(AF_INET, SOCK_STREAM)   
-                ip_logger = self.dispatcher()
-                s.connect((ip_logger, PORT_GENERAL_LOGGER))
-                data_bytes = util.encode(message)
-                s.send(data_bytes)            
-                s.close()
-                break       
-            except Exception as e:
-                try_count += 1
-                
-        if try_count == 5:
+        good, error = self.try_send_logger(message)
+        if not good: 
             msg = {
                 'type': ENTRY_POINT,
                 'proto': CREATE_TWEET_RESPONSE,
@@ -528,20 +501,8 @@ class EntryPointServerTheaded(MultiThreadedServer):
             'id_request': state.id
         }
 
-        try_count = 0
-        while try_count < 5:
-            try:
-                s = socket.socket(AF_INET, SOCK_STREAM)   
-                ip_logger = self.dispatcher()
-                s.connect((ip_logger, PORT_GENERAL_LOGGER))
-                data_bytes = util.encode(message)
-                s.send(data_bytes)            
-                s.close()
-                break       
-            except Exception as e:
-                try_count += 1
-                
-        if try_count == 5:
+        good, error = self.try_send_logger(message)
+        if not good:
             msg = {
                 'type': ENTRY_POINT,
                 'proto': PROFILE_RESPONSE,
@@ -616,20 +577,8 @@ class EntryPointServerTheaded(MultiThreadedServer):
             'id_request': state.id
         }
 
-        try_count = 0
-        while try_count < 5:
-            try:
-                s = socket.socket(AF_INET, SOCK_STREAM)   
-                ip_logger = self.dispatcher()
-                s.connect((ip_logger, PORT_GENERAL_LOGGER))
-                data_bytes = util.encode(message)
-                s.send(data_bytes)            
-                s.close()
-                break       
-            except Exception as e:
-                try_count += 1
-                
-        if try_count == 5:
+        good, error = self.try_send_logger(message)
+        if not good:
             msg = {
                 'type': ENTRY_POINT,
                 'proto': FOLLOW_RESPONSE,
@@ -684,41 +633,60 @@ class EntryPointServerTheaded(MultiThreadedServer):
         state.desired_data = data
         state.hold_event.set()
 
-
     #------------------ ALIVE ------------------#
 
-    def alive_request_to_entry_point(self):
+    def alive_request_to_entry_point(self, event:Event):
 
         msg_bytes = util.encode(self.stalker_entrys.msg_stalk())
-        for dir in self.stalker_entrys.dieds_dirs(30):
+        self.stalking_entrys = True
+        time.sleep(rand.randint(20,60))
+        while not event.is_set():
+            dirs_to_stalk = self.stalker_entrys.dieds_dirs(30)
+            print('STALKEANDO Entrys: ', dirs_to_stalk)
+            for dir in dirs_to_stalk:
+                try:
+                    s = socket.socket(AF_INET, SOCK_STREAM)
+                    s.connect((dir, PORT_GENERAL_ENTRY))
+                    s.send(msg_bytes)
+                    data = util.decode(s.recv(1024))                    
+                    #TODO Verificar respuesta
+                    s.close()
+                    self.stalker_entrys.update_IP(dir)
+                except:
+                    self.print('ALIVE ENTRY Conexion perdida con: ', dir)
+            time.sleep(rand.randint(20,60))
+        self.stalking_entrys = False
+        print('END Stalking Entrys')
 
-            try:
-                s = socket.socket(AF_INET, SOCK_STREAM)
-                s.connect((dir, PORT_GENERAL_ENTRY))
-                s.send(msg_bytes)
-                s.close()
-            except:
-                self.print('ALIVE ENTRY Conexion perdida con: ', dir)
-
-
-    def alive_request_to_logger(self):
+    def alive_request_to_logger(self, event: Event):
 
         msg_bytes = util.encode(self.stalker_loggers.msg_stalk())
-        for dir in self.stalker_loggers.dieds_dirs(60):
-            
-            try:
-                s = socket.socket(AF_INET, SOCK_STREAM)
-                s.connect((dir, PORT_GENERAL_LOGGER))
-                s.send(msg_bytes)
-                s.close()
-            except:
-                self.print('ALIVE LOGGER Conexion perdida con: ', dir)
+        self.stalking_loggers = True
+        time.sleep(rand.randint(20,60))
+        while not event.is_set():
+            dirs_to_stalk = self.stalker_loggers.dieds_dirs(30)
+            print('STALKEANDO Loggers: ', dirs_to_stalk)
+            for dir in dirs_to_stalk:
+                try:
+                    s = socket.socket(AF_INET, SOCK_STREAM)
+                    s.connect((dir, PORT_GENERAL_LOGGER))
+                    s.send(msg_bytes)
+                    data = util.decode(s.recv(1024))
+                    #TODO Verificar respuesta
+                    s.close()
+                    self.stalker_loggers.update_IP(dir)
+                except:
+                    self.print('ALIVE LOGGER Conexion perdida con: ', dir)
+            time.sleep(rand.randint(20,60))
+        self.stalking_loggers = False
+        print('END Stalking Loggers')
 
 
-    def alive_response_from_entry_point(self, id:int,task: tuple[socket.socket,object],event:Event, storage, data: dict):
+    def alive_response_to_entry_point(self, id:int,task: tuple[socket.socket,object],event:Event, storage, data: dict):
         #TODO agregar condicional para cuando no este
         self.stalker_entrys.update_IP(task[1][0])
-
-    def alive_response_from_loggers(self, id:int,task: tuple[socket.socket,object],event:Event, storage, data: dict):
-        #TODO agregar condicional para cuando no este
-        self.stalker_loggers.update_IP(task[1][0])
+        task[0].send(util.encode({
+            'type': ENTRY_POINT,
+            'proto': ALIVE_RESPONSE
+        }))
+        task[0].close()
