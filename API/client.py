@@ -20,34 +20,33 @@ class Client():
 
     def __init__(self):
         self.entry_point_ips = []
-        self.__recent_entry_point_ip = None
         self.token = None
         self.nick = None   
 
         with open('entrys.txt', 'r') as ft:
-            for ip in ft.readlines():
-                self.entry_point_ips.append(ip)
+            for ip in ft.read().split(sep='\n'):
+                self.entry_point_ips.append(str(ip))
+        self.current_index_entry_point_ip = rand.randint(0, len(self.entry_point_ips))
         
-    def recent_entry_point_ip(self):
-        return 'entry'
-        if self.__recent_entry_point_ip is None:
-            self.__recent_entry_point_ip =rand.choice(self.entry_point_ips)            
-        return self.__recent_entry_point_ip
 
     def try_send_recv(self, message, count_bytes_recv=10240):
 
-        for ip in [self.recent_entry_point_ip()] + rand.shuffle(self.entry_point_ips.copy()):            
+        error = None        
+        for i in range(0,len(self.entry_point_ips)):
             try:
                 send_data = util.encode(message)
                 s = socket.socket(AF_INET, SOCK_STREAM)
+                ip = self.entry_point_ips[self.current_index_entry_point_ip]
                 s.connect((ip, PORT_GENERAL_ENTRY))
                 s.send(send_data)
                 recv_bytes = s.recv(count_bytes_recv)
                 recv_data = util.decode(recv_bytes)
                 return True, recv_data
-            except Exception as e:
-                print(e)
-        return False, e
+            except Exception as e:                
+                print(f'Entry "{ip}" caido')
+                self.current_index_entry_point_ip = (self.current_index_entry_point_ip+1) % len(self.entry_point_ips)
+                error = e
+        return False, error
 
     def sign_up(self, name, nick, password):
         '''
@@ -63,16 +62,11 @@ class Client():
             'name': name,
             'nick': nick,
             'password': password,        
-        }
-        try:
-            send_data = util.encode(message)
-            s = socket.socket(AF_INET, SOCK_STREAM)
-            s.connect((self.recent_entry_point_ip(), PORT_GENERAL_ENTRY))
-            s.send(send_data)
-            recv_bytes = s.recv(1024)
-            recv_data = util.decode(recv_bytes)
-        except Exception as e:
-            return False, str(e)
+        }        
+        
+        good, recv_data = self.try_send_recv(message)
+        if not good:
+            return False, str(recv_data)
         
         if recv_data['proto'] == REGISTER_RESPONSE:
             if recv_data['succesed']:
@@ -98,16 +92,9 @@ class Client():
             'nick': nick,
             'password': password,        
         }        
-        try:
-            send_data = util.encode(message)
-            s = socket.socket(AF_INET, SOCK_STREAM)
-            s.connect((self.recent_entry_point_ip(), PORT_GENERAL_ENTRY))
-            s.send(send_data)
-            recv_bytes = s.recv(10240)
-            recv_data = util.decode(recv_bytes)
-        except Exception as e:
-            self.__recent_entry_point_ip = None
-            return False, str(e)
+        good, recv_data = self.try_send_recv(message)
+        if not good:
+            return False, str(recv_data)
         
         if recv_data['proto'] == LOGIN_RESPONSE:
             if recv_data['succesed']:
@@ -128,15 +115,10 @@ class Client():
             'nick': nick,
             'token': token,        
         }
-        try:
-            send_data = util.encode(message)
-            s = socket.socket(AF_INET, SOCK_STREAM)
-            s.connect((self.recent_entry_point_ip(), PORT_GENERAL_ENTRY))
-            s.send(send_data)
-            recv_bytes = s.recv(1024)
-            recv_data = util.decode(recv_bytes)
-        except Exception as e:
-            return False, str(e)
+
+        good, recv_data = self.try_send_recv(message)
+        if not good:
+            return False, str(recv_data)
         
         if recv_data['proto'] == LOGOUT_RESPONSE:
             if recv_data['succesed']:                
@@ -166,15 +148,9 @@ class Client():
             'text': text
         }
         
-        try:
-            send_data = util.encode(msg)
-            s = socket.socket(AF_INET, SOCK_STREAM)
-            s.connect((self.recent_entry_point_ip(), PORT_GENERAL_ENTRY))
-            s.send(send_data)
-            recv_bytes = s.recv()
-            recv_data = util.decode(recv_bytes)
-        except Exception as e:
-            return False, str(e)
+        good, recv_data = self.try_send_recv(msg)
+        if not good:
+            return False, str(recv_data)
         
         if recv_data['proto'] == CREATE_TWEET_RESPONSE:
             if recv_data['succesed']:                
@@ -197,15 +173,9 @@ class Client():
             'block': block
         }
         
-        try:
-            send_data = util.encode(msg)
-            s = socket.socket(AF_INET, SOCK_STREAM)
-            s.connect((self.recent_entry_point_ip(), PORT_GENERAL_ENTRY))
-            s.send(send_data)
-            recv_bytes = s.recv()
-            recv_data = util.decode(recv_bytes)
-        except Exception as e:
-            return False, str(e)
+        good, recv_data = self.try_send_recv(msg)
+        if not good:
+            return False, str(recv_data)
         
         if recv_data['proto'] == PROFILE_RESPONSE:
             if recv_data['succesed']:
@@ -227,15 +197,9 @@ class Client():
             'nick_profile': nick_profile,
         }
 
-        try:
-            send_data = util.encode(msg)
-            s = socket.socket(AF_INET, SOCK_STREAM)
-            s.connect((self.recent_entry_point_ip(), PORT_GENERAL_ENTRY))
-            s.send(send_data)
-            recv_bytes = s.recv()
-            recv_data = util.decode(recv_bytes)
-        except Exception as e:
-            return False, str(e)
+        good, recv_data = self.try_send_recv(msg)
+        if not good:
+            return False, str(recv_data)
         
         if recv_data['proto'] == PROFILE_RESPONSE:
             if recv_data['succesed']:
