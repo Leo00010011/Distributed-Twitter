@@ -192,7 +192,10 @@ class ChordServer:
             if(msg == 'end'):
                 event.set()
                 socket_client.close()
-            parsed_msg = ChordServer.parse_msg(msg)
+            try:                
+                parsed_msg = ChordServer.parse_msg(msg)
+            except:
+                self.update_log(f'Bad Request: {msg}')
             self.update_log(f'recived: cmd:{parsed_msg.cmd} req_id:{parsed_msg.req_id} id:{parsed_msg.id_k} owner:{parsed_msg.owner_ip} as_max:{str(parsed_msg.as_max)}')
             self.response[parsed_msg.cmd](parsed_msg,socket_client,addr_client)
         return dispatcher
@@ -240,11 +243,11 @@ class ChordServer:
 
 
     def succ_who(self,k,as_max) -> ChordNode:
+        res_id = self.id
         if as_max:
             k = k - self.max_id
-        res_id = self.id
-        if (as_max):
             res_id += self.max_id
+        
         if self.Ft[0].id < k <= self.id:
             return ChordNode(res_id,self.ip,as_max)
         
@@ -255,19 +258,28 @@ class ChordServer:
         
         if self.id < k <= self.Ft[1].id:
             return self.Ft[1]
+        
         less_than_me = False
         if k < self.id:
             less_than_me = True
             k += self.max_id
-        
+            self.update_log(f'succ who: less: {less_than_me} k: {k}')
+
         for i in range(2,len(self.Ft) - 1):
             if self.Ft[i].id <= k < self.Ft[i + 1].id:
                 if less_than_me and self.Ft[i].as_max:
+                    self.update_log(f'succ Yess who: less: {less_than_me} k: {k} index: {i}node{self.Ft[i].as_max}')
                     return ChordNode(self.Ft[i].id - self.max_id,self.Ft[i].ip,False)
                 else:
+                    self.update_log(f'succ Nooo who: less: {less_than_me} k: {k} index: {i}node{self.Ft[i].as_max}')
                     return self.Ft[i]
-            
-        return self.Ft[-1]
+        if less_than_me and self.Ft[-1].as_max:
+            self.update_log(f'succ Yess who: less: {less_than_me} k: {k} index: {-1}node{self.Ft[-1].as_max}')
+            return ChordNode(self.Ft[-1].id - self.max_id,self.Ft[-1].ip,False)
+        else:
+            self.update_log(f'succ Nooo who: less: {less_than_me} k: {k} index: {-1}node{self.Ft[-1].as_max}')
+            return self.Ft[-1]
+        
 
     def succ(self,k,owner_ip,as_max,req_id):
         who = self.succ_who(k,as_max)
@@ -433,9 +445,9 @@ class ChordServer:
         return holder.desired_data
     
     def parse_msg(raw_msg:str) -> ParsedMsg:
-        arr = raw_msg.split(',')
-        return ParsedMsg(arr[0], arr[1], arr[2], arr[3],arr[4])
-        
+            arr = raw_msg.split(',')
+            return ParsedMsg(arr[0], arr[1], arr[2], arr[3],arr[4])
+
     def create_msg(cmd:str,k:int, owner_ip:str, as_max:bool, req_id:int):
         return ','.join([str(cmd),str(k),str(owner_ip),str(as_max),str(req_id),])
 
