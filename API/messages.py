@@ -128,6 +128,16 @@ def profile_response_msg(success, error, id_request, data_profile):
         }
     return data
 
+def profile_request_msg(nick, id_request):
+    
+    data = {
+            'type': TWEET,
+            'proto': PROFILE_REQUEST,
+            'nick': nick,
+            "id_request":id_request,
+            }
+    return data
+
 def logout_request_msg(nick,token,id_reqiuest):
     data = {
             "type": LOGGER,
@@ -170,7 +180,7 @@ def recent_published_response_msg(success, error, id_request, data):
         }
     return msg
 
-def check_tweet_request(nick, date, id_request):
+def check_tweet_request_msg(nick, date, id_request):
     data = {
             'type': TWEET,
             'proto': CHECK_TWEET_REQUEST,
@@ -180,7 +190,7 @@ def check_tweet_request(nick, date, id_request):
     }
     return data
 
-def check_tweet_request(exist, id_request, text):  
+def check_tweet_response_msg(exist, id_request, text):  
     data = {
                 'type': TWEET,
                 'proto': CHECK_TWEET_RESPONSE,

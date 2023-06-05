@@ -358,6 +358,7 @@ class TweeterServer(MultiThreadedServer):
         try:
             if view.CheckToken(data_dict['token'], data_dict['nick']):
                 date = datetime.datetime.now() 
+                
                 if view.CreateTweet( data_dict['text'], data_dict['nick'], date): 
                     data = create_tweet_response_msg(True, None, id_request)
                     send_and_close(addr_client[0], PORT_GENERAL_LOGGER, data)
@@ -455,99 +456,52 @@ class TweeterServer(MultiThreadedServer):
         socket_client.close()
         id_request = data_dict['id_request']
         nick = data_dict['nick_profile'] 
+        data = None
         
         if view.CheckToken(data_dict['token'], data_dict['nick']):
                 state = do_chord_sequence(storage, nick)
 
-                if w:
+                if state and state.desired_data:
                     #Escribirle al server que tiene al usuario
                     state2 = storage.get_state()
-                    data = {
-                            'type': TWEET,
-                            'proto': PROFILE_GET,
-                            'nick': data_dict['nick_profile'],
-                            "id_request": state2.id,
-                    }
+                    data = profile_request_msg(data_dict['nick_profile'], state2.id)
+                    send_and_close(state.desired_data['IP'], PORT_GENERAL_LOGGER, data)
+                    state = wait_get_delete(storage, state2)
 
-                    skt = socket.socket(AF_INET,SOCK_STREAM)
-                    skt.connect((state.desired_data['IP'], PORT_GENERAL_LOGGER))
-                    skt.send(util.encode(data_dict))                    
-                    
-                    w = state2.hold_event.wait(5)
-                    state = storage.get_state(state2.id)
-                    storage.delete_state(state.id)
-
-                    data = state.desire_data
-                    if w:
+                    if state and state.desired_data:
+                        data = state.desired_data
                         data['id_request'] = data_dict['id_request']
                        
                         #reenviar mensaje de autenticacion
                     else:
-
-                        data = {
-                            'type':TWEET,
-                            'proto': PROFILE_RESPONSE,
-                            'succesed': False,
-                            'error': "Network error",
-                            'id_request' : data_dict['id_request']
-                        }
-                else:        
-                    data = {
-                            'type':TWEET,
-                            'proto': PROFILE_RESPONSE,
-                            'succesed': False,
-                            'error': "Network error",
-                            'id_request': data_dict['id_request']
-                        }
-        else: 
-                data = {
-                            'type':TWEET,
-                            'proto': PROFILE_RESPONSE,
-                            'succesed': False,
-                            'error': "Wrong token error",
-                            'id_request': data_dict['id_request']
-                        }    
-            
-        socket_client.send(util.encode(data))
-        socket_client.close()  
+                        data = profile_response_msg(False,"Network error", id_request, {})
+                        
+                else:
+                    data = profile_response_msg(False,"Network error", id_request, {})        
+                    
+        else:
+            data = profile_response_msg(False,"Wrong token error", id_request, {})   
+        
+        send_and_close(addr_client[0], PORT_GENERAL_LOGGER, data)   
+          
                  
     def create_retweet(self, socket_client, addr_client, data_dict, storage):
+        
+        socket_client.close()
+        id_request = data_dict['id_request']
+        data = None
+
         if view.CheckToken(data_dict['token'], data_dict['nick']):
-                state = storage.insert_state()
-                data = {
-                        'type': TWEET,
-                        'proto': CHORD_REQUEST,
-                        'hash': data_dict['nick2'],
-                        "id_request": state.id,
-                    }
                 
-                skt = socket.socket(AF_INET,SOCK_STREAM)
-                skt.connect(('127.0.0.1', CHORD_PORT ))
-                skt.send(util.encode(data))
-
-                w = state.hold_event.wait(5)
-                state = storage.get_state(state.id)
-                storage.delete_state(state.id)
-
-                if w:
+                state = do_chord_sequence(storage, data_dict['nick_profile'])
+                
+                if state and state.desired_data:
                     #Escribirle al server que tiene al usuario
                     state2 = storage.get_state()
-                    data = {
-                            'type': TWEET,
-                            'proto': CHECK_TWEET_REQUEST,
-                            'nick': data_dict['nick2'],
-                            'date': data_dict['date'],
-                            "id_request": state2.id,
-                    }
-
-                    skt = socket.socket(AF_INET,SOCK_STREAM)
-                    skt.connect((state.desired_data['IP'], PORT_GENERAL_LOGGER))
-                    skt.send(util.encode(data_dict))                    
-                    
-                    w = state2.hold_event.wait(5)
-                    state = storage.get_state(state2.id)
-                    storage.delete_state(state.id)
-
+                    data = check_tweet_request(data_dict['nick_profile'], data_dict['date'], state2.id)
+                    send_and_close(state.desired_data['IP'], PORT_GENERAL_LOGGER, data)
+                    state = wait_get_delete(storage, state2)
+                
                     data = {
                             'type': TWEET,
                             'proto': RETWEET_RESPONSE,
@@ -556,213 +510,116 @@ class TweeterServer(MultiThreadedServer):
                             'error':None
                     }
                    
-                    if w:
+                    if state and state.desired_data:
+
                         if state.desired_data['exist']:
                             if  view.CreateReTweet(data_dict['nick'], data_dict['nick2'], data_dict['date']):
-                                socket_client.send(util.encode(data))
-                                socket_client.close()
+                                data = retweet_response_msg(True, None, id_request)
+                                send_and_close(addr_client[0], PORT_GENERAL_LOGGER, data)   
                                 return
-                    
-                    data['succesed']=False
-                    data['error'] = 'Error trying to retweet'
+                    data = retweet_response_msg(False, 'Error trying to retweet', id_request)
                 else:
-                  data = {
-                            'type': TWEET,
-                            'proto': RETWEET_RESPONSE,
-                            'id_request':data_dict['id_request'],
-                            'succesed': False,
-                            'error': 'Network error'
-                    } 
+                    data = retweet_response_msg(False, 'Network error', id_request)
+                  
         else:
-            data = {
-                            'type': TWEET,
-                            'proto': RETWEET_RESPONSE,
-                            'id_request':data_dict['id_request'],
-                            'succesed': False,
-                            'error': 'User is not logged in'
-                    }
-
-        socket_client.send(util.encode(data))
-        socket_client.close() 
+            data = retweet_response_msg(False, 'User is not logged in', id_request)
+            
+        send_and_close(addr_client[0], PORT_GENERAL_LOGGER, data)   
 
     def feed_get(self, socket_client, addr_client, data_dict,storage):
+        
+        socket_client.close()
+        msg = None
+        id_request = data_dict['id_request']
+        feed_data = []
+
         if view.CheckToken(data_dict['token'], data_dict['nick']):
+            
             followed = view.GetFollowed(data_dict['nick'])
-            msg = {
-                    'type': TWEET,
-                    'proto': FEED_RESPONSE,
-                    'successed': True,
-                    'error': None,
-                    "id_request": data_dict['id_request'],
-                    'data':[]
-                }
             followed = random.shufle(followed)
             
             for f in followed[:min(20, len(followed))]:
                 
-                state = storage.insert_state()
-                data = {
-                    'type': TWEET,
-                    'proto': CHORD_REQUEST,
-                    'hash': f.followed,
-                    "id_request": state.id,
-                }
-
-                skt = socket.socket(AF_INET,SOCK_STREAM)
-                skt.connect(('127.0.0.1', CHORD_PORT ))
-                skt.send(util.encode(data))
-
-                w = state.hold_event.wait(3)
-                state = storage.get_state(state.id)
-                storage.delete_state(state.id)
-
-                if w:
+                state = do_chord_sequence(storage, f.followed) 
+                
+                if state and state.desired_data:
                     #Escribirle al server que tiene al usuario
                     state2 = storage.get_state()
-                    data = {
-                        'type': TWEET,
-                        'proto': RECENT_PUBLISHED_REQUEST,
-                        'nick': f.followed,
-                        "id_request": state.id,
-                    }
+                    data = recent_published_request_msg(f.followed, state2.id)
+                    send_and_close(state.desired_data['IP'], PORT_GENERAL_LOGGER, data)
+                    state = wait_get_delete(storage, state2)
 
-
-                    skt = socket.socket(AF_INET,SOCK_STREAM)
-                    skt.connect((state.desired_data['IP'], PORT_GENERAL_LOGGER))
-                    skt.send(util.encode(data_dict))
-
-                    w = state2.hold_event.wait(3)
-                    state = storage.get_state(state2.id)
-                    storage.delete_state(state.id)
-
-                    if w and state.desired_data["successed"]: 
-                        msg['data'].append((state.desired_data["date"], state.desired_data["text"], state.desired_data["nick"], state.desired_data.get('nick2', None), state.desired_data.get('date_tweet', None)))
-
-            socket_client.send(util.encode(msg))
-            socket_client.close()
+                    if state and state.desired_data and state.desired_data["successed"]: 
+                        feed_data.append((state.desired_data["date"], state.desired_data["text"], state.desired_data["nick"], state.desired_data.get('nick2', None), state.desired_data.get('date_tweet', None)))
+            
+            data = feed_response_msg(True, None, id_request, feed_data)
+            send_and_close(addr_client[0], PORT_GENERAL_LOGGER, data)
             return
         
-        msg = {
-                    'type': TWEET,
-                    'proto': FEED_RESPONSE,
-                    'successed': False,
-                    'error': 'User not logged',
-                    "id_request": data_dict['id_request'],
-                    'data':[]
-                }   
-        socket_client.send(util.encode(msg))
-        socket_client.close()
+        data = feed_response_msg(False, 'User not logged', id_request, [])
+        send_and_close(addr_client[0], PORT_GENERAL_LOGGER, data)
                       
     def tweet_check(self, socket_client, addr_client, data_dict,storage):
+        
+        socket_client.close()
+
+        id_request = data_dict['id_request']
         nick = data_dict['nick']
         date = data_dict.get['date']
         tweet = view.ChechTweet(nick, date)
-        if tweet:
-            data = {
-                'type': TWEET,
-                'proto': CHECK_TWEET_RESPONSE,
-                'exist':True,
-                'id_request':data_dict['id_request'],
-                'text': tweet.text
-            }
-            socket_client.send(util.encode(data))
-            socket_client.close()
-            return
         
-        data = {
-                'type': TWEET,
-                'proto': CHECK_TWEET_RESPONSE,
-                'exist':False,
-                'id_request':data_dict['id_request'],
-                'text': None
-            }
-        socket_client.send(util.encode(data))
-        socket_client.close()
+        if tweet:
+            data = check_tweet_response_msg(True, id_request, tweet.text)
+            
+        else: 
+            data = check_tweet_response_msg(False, id_request, None)
+        
+        send_and_close(addr_client[0], PORT_GENERAL_LOGGER, data)
         
     def recent_publish(self, socket_client, addr_client, data_dict,storage):
+        
+        socket_client.close()
+        
+        id_request = data_dict['id_request']
         nick = data_dict['nick']
+        data_publish = {'tweet': {}, 'retweet': {}}
+        
         tweet, retweet = view.GetProfileRange(nick, 0, 100)
         tweet = random.choice(tweet)
         retweet = random.choice(retweet)
+        
         r = random.random()
         
         if r < 0.5:
+            state = do_chord_sequence(storage, retweet.nick)
             state = storage.insert_state()
-            data = {
-                'type': TWEET,
-                'proto': CHORD_REQUEST,
-                'hash': retweet.nick,
-                "id_request": state.id,
-            }
-
-            skt = socket.socket(AF_INET,SOCK_STREAM)
-            skt.connect(('127.0.0.1', CHORD_PORT ))
-            skt.send(util.encode(data))
-
-            w = state.hold_event.wait(3)
-            state = storage.get_state(state.id)
-            storage.delete_state(state.id)
-
-            if w:
+            
+            if state and state.desired_data:
                     #Escribirle al server que tiene al usuario
                     state2 = storage.get_state()
-                    data = {
-                        'type': TWEET,
-                        'proto': CHECK_TWEET_REQUEST,
-                        'nick': retweet.nick,
-                        'date': retweet.date_tweet,
-                        "id_request": state.id,
-                    }
+                    data = check_tweet_request_msg(retweet.nick, retweet.date_tweet, state2.id)
+                    send_and_close(addr_client[0], PORT_GENERAL_LOGGER, data)
+                    state = wait_get_delete(storage, state2)
+                    
 
-
-                    skt = socket.socket(AF_INET,SOCK_STREAM)
-                    skt.connect((state.desired_data['IP'], PORT_GENERAL_LOGGER))
-                    skt.send(util.encode(data_dict))
-
-                    w = state2.hold_event.wait(3)
-                    state = storage.get_state(state2.id)
-                    storage.delete_state(state.id)
-
-                    if w and state.desired_data["successed"]: 
-                        data = {
-                            'type': TWEET,
-                            'proto': RECENT_PUBLISHED_RESPONSE,
-                            'succesed':  True,
-                            'error':None,
-                            "id_request": data_dict['id_request'],
-                            "date": retweet.date_retweet,
+                    if state and state.desired_data and state.desired_data["successed"]: 
+                        data_publish['retweet'] = {
+                            "date_retweet": retweet.date_retweet,
+                            'date_tweet': retweet.date_tweet
                             'text': state.desired_data["text"],
                             'nick2': retweet.nick
-                        }
-                        socket_client.send(util.encode(data))
-                        socket_client.close()
-
-            return
-        data = {
-                'type': TWEET,
-                'proto': RECENT_PUBLISHED_RESPONSE,
-                'succesed':  True,
-                'error':None,
-                "id_request": data_dict['id_request'],
-                "date": tweet.date,
-                'text': tweet.text,
-                'nick2': None
-            }
-        socket_client.send(util.encode(data))
-        socket_client.close()
-            
-    def new_logger_request(self):
+                            } 
+                        data = recent_published_response_msg(True, None, id_request, data_publish)
+                        send_and_close(addr_client[0], PORT_GENERAL_LOGGER, data)
+                        return
         
-        data = {
-            'type': LOGGER,
-            'proto': NEW_LOGGER_REQUEST,
-            'function': NEW_NODE 
-        }
-
-        skt = socket.socket(AF_INET,SOCK_STREAM)
-        skt.connect(('127.0.0.1', CHORD_PORT))
-        skt.send(util.encode(data))
-
+        data_publish['tweet'] = {
+                            "date": tweet.date,
+                            'text': tweet.text,
+                            } 
+        data = recent_published_response_msg(True, None, id_request, data)
+        send_and_close(addr_client[0], PORT_GENERAL_LOGGER, data)
+        
     def new_logger_response(self, socket_client, addr_client, data_dict,storage):
         socket_client.close()
         if self.chord_id: 
