@@ -1,6 +1,6 @@
 import socket
 from socket import AF_INET, SOCK_STREAM
-from threading import Thread, Event
+from threading import Thread, Event, Lock
 import random as rand
 import time
 
@@ -13,7 +13,8 @@ try:
         NEW_LOGGER_RESPONSE, NEW_LOGGER_REQUEST, REGISTER_RESPONSE, REGISTER_REQUEST,\
         CREATE_TWEET_REQUEST, CREATE_TWEET_RESPONSE, PROFILE_REQUEST, PROFILE_RESPONSE,\
         FOLLOW_REQUEST,FOLLOW_RESPONSE, LOGOUT_REQUEST, LOGOUT_RESPONSE, ALIVE_REQUEST,\
-        ALIVE_RESPONSE, ADD_LOGGER, REMOVE_LOGGER, ADD_ENTRY, REMOVE_ENTRY
+        ALIVE_RESPONSE, ADD_LOGGER, REMOVE_LOGGER, ADD_ENTRY, REMOVE_ENTRY, INSERTED_LOGGER_REQUEST,\
+        INSERTED_LOGGER_RESPONSE
 except:
     import API.util as util
     from API.threaded_server import MultiThreadedServer    
@@ -23,14 +24,15 @@ except:
         NEW_LOGGER_RESPONSE, NEW_LOGGER_REQUEST, REGISTER_RESPONSE, REGISTER_REQUEST,\
         CREATE_TWEET_REQUEST, CREATE_TWEET_RESPONSE, PROFILE_REQUEST, PROFILE_RESPONSE,\
         FOLLOW_REQUEST,FOLLOW_RESPONSE, LOGOUT_REQUEST, LOGOUT_RESPONSE, ALIVE_REQUEST,\
-        ALIVE_RESPONSE, ADD_LOGGER, REMOVE_LOGGER, ADD_ENTRY, REMOVE_ENTRY
+        ALIVE_RESPONSE, ADD_LOGGER, REMOVE_LOGGER, ADD_ENTRY, REMOVE_ENTRY, INSERTED_LOGGER_REQUEST,\
+        INSERTED_LOGGER_RESPONSE
     
 class EntryPointServerTheaded(MultiThreadedServer):
 
     def __init__(self, port: int, task_max: int, thread_count: int, timeout: int):
         super().__init__(port, task_max, thread_count, timeout, self.switch)
         self.stalker_loggers = Stalker(LOGGER)
-        self.stalker_entrys = Stalker(ENTRY_POINT)  
+        self.stalker_entrys = Stalker(ENTRY_POINT)
         self.verbose = True
         self.execute_pending_tasks = False
         self.stalking_entrys = False
@@ -38,6 +40,7 @@ class EntryPointServerTheaded(MultiThreadedServer):
         self.executing = False
         self.pending_tasks = {}
         self.my_ip = socket.gethostbyname(socket.gethostname())
+        self.lock = Lock()
 
         with open('entrys.txt', 'r') as ft:
             for ip in ft.read().split(sep='\n'):
@@ -70,9 +73,11 @@ class EntryPointServerTheaded(MultiThreadedServer):
         if self.verbose:
             print(*str)
 
-    def dispatcher_loggers(self):        
-        l = [ip for _, ip in self.stalker_loggers.listl[max(-5,-len(l)):]]
-        rand.shuffle(l)
+    def dispatcher_loggers(self):  
+        with self.lock: 
+            dirs = self.stalker_loggers.alive_dirs.copy()
+        rand.shuffle(dirs)
+        l = [ip for _, ip in dirs[:5]]        
         return l
     
     def add_task(self, new_task):
@@ -88,7 +93,7 @@ class EntryPointServerTheaded(MultiThreadedServer):
     
     def send_pending_tasks(self, event: Event):
         self.execute_pending_tasks = True
-        time.sleep(rand.randint(3,30))
+        event.wait(rand.randint(3,30))
         while not event.is_set():
             for ip, tasks in self.pending_tasks.items():
                 for i, task in enumerate(tasks.copy()):
@@ -104,10 +109,10 @@ class EntryPointServerTheaded(MultiThreadedServer):
                         s.close()
                         self.print(f'TAREA PENDIENTE "{task[0]}:{task[1]}" ENVIADA a {ip}:{PORT_GENERAL_ENTRY}')
                         tasks.pop(i)
-                        time.sleep(rand.randint(1,5))
+                        event.wait(rand.randint(1,5))
                     except:
                         self.print(f'TAREA PENDIENTE "{task[0]}:{task[1]}" NO enviada a {ip}:{PORT_GENERAL_ENTRY}')
-            time.sleep(rand.randint(3,30))
+            event.wait(rand.randint(3,30))
         self.execute_pending_tasks = False
         print('END Pending Tasks')
 
@@ -151,7 +156,11 @@ class EntryPointServerTheaded(MultiThreadedServer):
             elif protocol == PROFILE_RESPONSE:
                 self.profile_response_from_logger(id, task, event, storage, data)
             elif protocol == LOGOUT_RESPONSE:
-                self.logout_response_from_logger(id, task, event, storage, data)            
+                self.logout_response_from_logger(id, task, event, storage, data)
+            elif protocol == NEW_LOGGER_REQUEST:
+                self.new_logger_request_from_logger(id, task, event, storage, data)
+            elif protocol == INSERTED_LOGGER_REQUEST:
+                self.inserted_logger_request_from_logger(id, task, event, storage, data)
             else:
                 print('Q pifia metes?')
         else:
@@ -241,7 +250,8 @@ class EntryPointServerTheaded(MultiThreadedServer):
     def login_response_from_logger(self, id:int,task: tuple[socket.socket,object],event:Event, storage, data: dict):
 
         self.print('LOGIN RESPONSE FROM LOGGER')
-        self.stalker_loggers.update_IP(task[1][0])
+        with self.lock:
+            self.stalker_loggers.update_IP(task[1][0])
         state = storage.get_state(data['id_request'])
         task[0].close()
         state.desired_data = data
@@ -312,7 +322,8 @@ class EntryPointServerTheaded(MultiThreadedServer):
 
     def logout_response_from_logger(self, id:int,task: tuple[socket.socket,object],event:Event, storage, data: dict):
 
-        self.stalker_loggers.update_IP(task[1][0])
+        with self.lock:
+            self.stalker_loggers.update_IP(task[1][0])
         state = storage.get_state(data['id_request'])
         task[0].close()
         state.desired_data = data
@@ -385,27 +396,13 @@ class EntryPointServerTheaded(MultiThreadedServer):
 
     def register_response_from_logger(self, id:int,task: tuple[socket.socket,object],event:Event, storage, data: dict):
 
-        self.stalker_loggers.update_IP(task[1][0])
+        with self.lock:
+            self.stalker_loggers.update_IP(task[1][0])
         state = storage.get_state(data['id_request'])
         task[0].close()
         state.desired_data = data
         state.hold_event.set()
-
-
-    def new_logger_request_from_logger(self, id:int,task: tuple[socket.socket,object],event:Event, storage, data: dict):
-        
-        self.stalker_loggers.extract_IP(task[1][0])
-        ip_logger = self.stalker_loggers.recommended_dir()
-        self.stalker_loggers.update_IP(task[1][0])
-        msg = {
-            'type': ENTRY_POINT,
-            'proto': NEW_LOGGER_RESPONSE,
-            'ip': ip_logger
-        }
-        self.add_task((ADD_LOGGER, task[1][0]))        
-        task[0].send(util.encode(msg))
-        task[0].close()
-        
+       
 
     #-------------------- CREATE TWEET ----------------------#
 
@@ -474,7 +471,8 @@ class EntryPointServerTheaded(MultiThreadedServer):
 
     def create_tweet_response_from_logger(self, id:int,task: tuple[socket.socket,object],event:Event, storage, data: dict):
 
-        self.stalker_loggers.update_IP(task[1][0])
+        with self.lock:
+            self.stalker_loggers.update_IP(task[1][0])
         state = storage.get_state(data['id_request'])
         task[0].close()
         state.desired_data = data
@@ -553,7 +551,8 @@ class EntryPointServerTheaded(MultiThreadedServer):
 
     def profile_response_from_logger(self, id:int,task: tuple[socket.socket,object],event:Event, storage, data: dict):
 
-        self.stalker_loggers.update_IP(task[1][0])
+        with self.lock:
+            self.stalker_loggers.update_IP(task[1][0])
         state = storage.get_state(data['id_request'])
         task[0].close()
         state.desired_data = data
@@ -627,7 +626,8 @@ class EntryPointServerTheaded(MultiThreadedServer):
 
     def follow_response_from_logger(self, id:int,task: tuple[socket.socket,object],event:Event, storage, data: dict):
 
-        self.stalker_loggers.update_IP(task[1][0])
+        with self.lock:
+            self.stalker_loggers.update_IP(task[1][0])
         state = storage.get_state(data['id_request'])
         task[0].close()
         state.desired_data = data
@@ -639,9 +639,9 @@ class EntryPointServerTheaded(MultiThreadedServer):
 
         msg_bytes = util.encode(self.stalker_entrys.msg_stalk())
         self.stalking_entrys = True
-        time.sleep(rand.randint(20,60))
+        event.wait(rand.randint(20,60))
         while not event.is_set():
-            dirs_to_stalk = self.stalker_entrys.dieds_dirs(30)
+            dirs_to_stalk = self.stalker_entrys.dieds_dirs(100)
             print('STALKEANDO Entrys: ', dirs_to_stalk)
             for dir in dirs_to_stalk:
                 try:
@@ -654,7 +654,7 @@ class EntryPointServerTheaded(MultiThreadedServer):
                     self.stalker_entrys.update_IP(dir)
                 except:
                     self.print('ALIVE ENTRY Conexion perdida con: ', dir)
-            time.sleep(rand.randint(20,60))
+            event.wait(rand.randint(20,60))
         self.stalking_entrys = False
         print('END Stalking Entrys')
 
@@ -662,9 +662,10 @@ class EntryPointServerTheaded(MultiThreadedServer):
 
         msg_bytes = util.encode(self.stalker_loggers.msg_stalk())
         self.stalking_loggers = True
-        time.sleep(rand.randint(20,60))
+        event.wait(rand.randint(20,60))
         while not event.is_set():
-            dirs_to_stalk = self.stalker_loggers.dieds_dirs(30)
+            with self.lock:
+                dirs_to_stalk = self.stalker_loggers.dieds_dirs(30)
             print('STALKEANDO Loggers: ', dirs_to_stalk)
             for dir in dirs_to_stalk:
                 try:
@@ -674,10 +675,11 @@ class EntryPointServerTheaded(MultiThreadedServer):
                     data = util.decode(s.recv(1024))
                     #TODO Verificar respuesta
                     s.close()
-                    self.stalker_loggers.update_IP(dir)
+                    with self.lock:
+                        self.stalker_loggers.update_IP(dir)
                 except:
                     self.print('ALIVE LOGGER Conexion perdida con: ', dir)
-            time.sleep(rand.randint(20,60))
+            event.wait(rand.randint(20,60))
         self.stalking_loggers = False
         print('END Stalking Loggers')
 
@@ -690,3 +692,50 @@ class EntryPointServerTheaded(MultiThreadedServer):
             'proto': ALIVE_RESPONSE
         }))
         task[0].close()
+
+    #------------------ NEW LOGGER ------------------#
+
+    def new_logger_request_from_logger(self, id:int,task: tuple[socket.socket,object],event:Event, storage, data: dict):
+        
+        self.lock.acquire()
+        if len(self.stalker_loggers.list) > 0:
+            if self.stalker_loggers.extract_IP(task[1][0]) is not None:
+                self.stalker_loggers.update_IP(task[1][0])
+                alive_loggers = self.stalker_loggers.alive_dirs.copy()
+            else:
+                alive_loggers = self.stalker_loggers.alive_dirs.copy()
+            if len(alive_loggers) == 0:
+                alive_loggers.append(self.stalker_loggers.list[-1])
+            self.lock.release()
+
+            rand.shuffle(alive_loggers)
+            ip_loggers = alive_loggers[:5]
+
+            msg = {
+                'type': ENTRY_POINT,
+                'proto': NEW_LOGGER_RESPONSE,
+                'ip_loggers': ip_loggers
+            }
+        else:
+            self.lock.release()
+            msg = {
+                'type': ENTRY_POINT,
+                'proto': NEW_LOGGER_RESPONSE,
+                'ip_loggers': None
+            }        
+        task[0].send(util.encode(msg))
+        task[0].close()
+
+
+    def inserted_logger_request_from_logger(self, id:int,task: tuple[socket.socket,object],event:Event, storage, data: dict):
+                        
+        with self.lock:
+            self.stalker_loggers.update_IP(task[1][0])
+        msg = {
+            'type': ENTRY_POINT,
+            'proto': INSERTED_LOGGER_RESPONSE,            
+        }
+        self.add_task((ADD_LOGGER, task[1][0]))
+        task[0].send(util.encode(msg))
+        task[0].close()
+ 
