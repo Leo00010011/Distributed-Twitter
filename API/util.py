@@ -49,8 +49,10 @@ CHECK_TWEET_REQUEST = 30
 CHECK_TWEET_RESPONSE = 31
 ADD_LOGGER = 32
 REMOVE_LOGGER = 33
-ADD_ENTRY = 32
-REMOVE_ENTRY = 33
+ADD_ENTRY = 34
+REMOVE_ENTRY = 35
+INSERTED_LOGGER_REQUEST = 36
+INSERTED_LOGGER_RESPONSE = 37
 
 # Puertos de escucha
 PORT_GENERAL_ENTRY = 15069
@@ -97,13 +99,15 @@ class Stalker:
     para verificar si est'a vivo a'un, pero dando mas probabilidad a los
     IP menos actualizados.
     '''
-    def __init__(self, type):
+    def __init__(self, type, umbral_alive = 90):
         '''
         Inicializa la estructura Stalker con el tipo de Server que la aloje.
         Internamente utiliza una lista con tuplas de la forma (tiempo, IP:Port)
         '''
         self.list = []
         self.type = type
+        self.umbral_alive = umbral_alive
+        self.alive_dirs = []
 
     def insert_IP(self, dir):
         '''
@@ -145,12 +149,15 @@ class Stalker:
     
     def dieds_dirs(self, umbral_time):
 
+        self.alive_dirs = []
         real_time = time.time()
         dieds = []
         for i in range(len(self.list)):
             t, dir = self.list[i]
             if real_time - t >= umbral_time:
                 dieds.append(dir)
+            if real_time - t <= self.umbral_alive:
+                self.alive_dirs.append(dir)
         return dieds
 
     def msg_stalk(self):

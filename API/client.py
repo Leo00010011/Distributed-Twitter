@@ -32,7 +32,7 @@ class Client():
     def try_send_recv(self, message, count_bytes_recv=10240):
 
         error = None        
-        for i in range(0,len(self.entry_point_ips)):
+        for _ in range(0,len(self.entry_point_ips)):
             try:
                 send_data = util.encode(message)
                 s = socket.socket(AF_INET, SOCK_STREAM)
