@@ -9,8 +9,24 @@ from hashlib import shake_256
 from math import floor, log2
 import os
 import datetime
+import util
 import sys
+import json
 
+# type: Chord(Utils)
+# proto: NEW_LOGGER_RESPONSE(Utils)
+# sucesors: [los ips de los sucesores]
+# siblings: [lista de replicas]
+# chord_id: mi sha
+
+# type: LOGGER
+# proto: CHORD_RESPONSE
+# IP: [Sucesores de la replica]
+
+# type: LOGGER
+# proto: CHORD_REQUEST
+# hash: (el nick para hashear) 
+# id_req: (int)
 
 # Comunication
 #  * Rec(Soy tu nuevo predecesor)
@@ -179,6 +195,8 @@ class ChordServer:
         else:
             self.insert()
         Thread(target=ChordServer.MaintainFt, args=[self], daemon=True).start()
+        msg = self.build_insert_response()
+        # self.send_and_close('127.0.0.1',msg,util.PORT_GENERAL_LOGGER)
         self.register_in_entry()
         self.update_log(f'inserted')
         Thread(target= ChordServer.sleeping_log, args=[self],daemon = True).start()
@@ -193,7 +211,7 @@ class ChordServer:
                 event.set()
                 socket_client.close()
             try:                
-                parsed_msg = ChordServer.parse_msg(msg)
+                parsed_msg = self.parse_msg(msg)
             except:
                 self.update_log(f'Bad Request: {msg}')
             self.update_log(f'recived: cmd:{parsed_msg.cmd} req_id:{parsed_msg.req_id} id:{parsed_msg.id_k} owner:{parsed_msg.owner_ip} as_max:{str(parsed_msg.as_max)}')
@@ -348,7 +366,15 @@ class ChordServer:
             holder.desired_data = ChordNode(self.id,self.ip,False)
         self.state_storage.delete_state(holder.id)
         self.update_log('responding to outside')
-        socket_client.send(holder.desired_data.ip.encode())
+        # type: LOGGER
+        # proto: CHORD_RESPONSE
+        # IP: [Replicas del sucesor]
+        msg_dict = {
+            'type': util.LOGGER,
+            'proto': util.CHORD_RESPONSE,
+            'IP':[holder.desired_data.ip]
+        }
+        socket_client.send(util.encode(msg_dict))
         socket_client.close()
         self.update_log(f'end outside req')
 
@@ -444,19 +470,50 @@ class ChordServer:
         self.state_storage.delete_state(holder.id)
         return holder.desired_data
     
-    def parse_msg(raw_msg:str) -> ParsedMsg:
-            arr = raw_msg.split(',')
-            return ParsedMsg(arr[0], arr[1], arr[2], arr[3],arr[4])
+    def build_insert_response(self):
+        # # # type: Chord(Utils)
+        # proto: NEW_LOGGER_RESPONSE(Utils)
+        # sucesors: [los ips de los sucesores]
+        # siblings: [lista de replicas]
+        # chord_id: mi sha
+        msg_dict = {
+            'type': util.CHORD,
+            'proto': util.NEW_LOGGER_RESPONSE,
+            'sucesors': [self.Ft[1].ip],
+            'siblings':[],
+            'chord_id': self.id
+        }
+        return json.dumps(msg_dict)
+
+
+    def parse_msg(self,raw_msg:str) -> ParsedMsg:
+        # # type: LOGGER
+        # proto: CHORD_REQUEST
+        # hash: (el nick para hashear) 
+        # id_req: (int)
+        msg_dict = util.decode(raw_msg)
+        result = None
+        if msg_dict['type'] == 'LOGGER':
+            result = ParsedMsg(self.outside_cmd,msg_dict['hash'],'0','False',msg_dict['id_req'])
+        else:
+            arr = msg_dict['content'].split(',')
+            result = ParsedMsg(arr[0], arr[1], arr[2], arr[3],arr[4])
+        return result
+
 
     def create_msg(cmd:str,k:int, owner_ip:str, as_max:bool, req_id:int):
-        return ','.join([str(cmd),str(k),str(owner_ip),str(as_max),str(req_id),])
+        msg = {
+            'type': util.CHORD_INTERNAL,
+            'content': ','.join([str(cmd),str(k),str(owner_ip),str(as_max),str(req_id),])
+        }
+        return util.encode(msg)
 
-    def send_and_close(self,ip,msg):
+    def send_and_close(self,ip,msg,port = 15000):
         s = socket(AF_INET,SOCK_STREAM)
         try:
             s.connect((ip,self.port))
             s.sendall(msg.encode())
-            response = s.recv(15000).decode()
+            response = s.recv(port).decode()
             s.close()
         except Exception as e:
             self.update_log(str(e))
