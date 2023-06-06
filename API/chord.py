@@ -159,7 +159,7 @@ class ChordServer:
         self.Ft_lock = Lock()
         #TODO gen ID
         self.ip = get_my_ip()
-        self.id_hex = hashlib.sha256(self.ip)
+        self.id_hex = hashlib.sha256(self.ip.encode()).hexdigest()
         self.id = int(self.id_hex,16)
         self.log: list[str] = []
         self.response ={
@@ -227,9 +227,10 @@ class ChordServer:
                 # print('to parse')
                 parsed_msg = self.parse_msg(msg)
                 # print('end parse')
-            except:
+            except Exception as e:
                 # print('bad request')
                 self.update_log(f'Bad Request: {msg}')
+                self.update_log(str(e))
             # print('alive')
             self.update_log(f'recived: cmd:{parsed_msg.cmd} req_id:{parsed_msg.req_id} id:{parsed_msg.id_hex} owner:{parsed_msg.owner_ip} as_max:{str(parsed_msg.as_max)}')
             self.response[parsed_msg.cmd](parsed_msg,socket_client,addr_client)
@@ -265,13 +266,14 @@ class ChordServer:
                     print('LOG:')
                     for entry, time_str in self.log:
                         print(f'{time_str}- {entry}')
-            print('FingerTable:')
-            with self.Ft_lock:
-                for index, node in enumerate(self.Ft):
-                    if not node:
-                        print('Not initialiced')
-                    else:
-                        print(f'{index})   ip:{node.ip}   id:{node.id_hex}   as_max: {node.as_max}')
+
+            # print('FingerTable:')
+            # with self.Ft_lock:
+            #     for index, node in enumerate(self.Ft):
+            #         if not node:
+            #             print('Not initialiced')
+            #         else:
+            #             print(f'{index})   ip:{node.ip}   id:{":e".format(node.id)}   as_max: {node.as_max}')
 
 
 
@@ -526,7 +528,7 @@ class ChordServer:
         result = None
         if msg_dict['type'] == util.LOGGER:
             # print('is logger request')
-            nick_hash = hashlib.sha256(msg_dict['hash'])
+            nick_hash = hashlib.sha256(msg_dict['hash'].encode()).hexdigest()
             result = ParsedMsg(self.outside_cmd,nick_hash,'0','False',msg_dict['id_req'])
         else:
             # print('is intern request')
@@ -561,7 +563,7 @@ first = input() == 'yes'
 print('disable log?')
 log = input()
 print('id:')
-id_n = int(input())
+id_n = input()
 server = ChordServer(DHT_name='Log',port = 15000,entry_points=['entry'],is_the_first= first,id = id_n, disable_log=log)
 server.start()
     
