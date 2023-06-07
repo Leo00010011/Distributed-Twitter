@@ -4,6 +4,7 @@ from threading import Thread, Event
 import hashlib
 import random
 
+
 try:
     import util
     from server import Server
@@ -43,14 +44,18 @@ class TweeterServer(MultiThreadedServer):
         
         self.entry_point_ips = []
         self.node_sibiling = []
-
+        self.primary = []
+        self.siblings = []
+        self.is_primary = False
+        self.my_ip = socket.gethostbyname(socket.gethostname())
+        
         with open('entrys.txt', 'r') as ft:
             for ip in ft.read().split(sep='\n'):
                 self.entry_point_ips.append(str(ip))
         self.current_index_entry_point_ip = rand.randint(0, len(self.entry_point_ips))
         self.chord_id = None
 
-    def switch(id:int, task: tuple[socket,object], event:Event, storage):
+    def switch(self, id:int, task: tuple[socket,object], event:Event, storage):
         '''
         Interprete y verificador de peticiones generales.
         Revisa que la estructura de la peticion sea adecuada,
@@ -71,51 +76,58 @@ class TweeterServer(MultiThreadedServer):
             print(e)
             return
         
+        if type_rqst == CHORD:
+            
+            if proto_rqst == NEW_LOGGER_REQUEST:
+                self.new_logger_response(socket_client, addr_client, data_dict,storage)
+            
+            
+
         if type_rqst == ENTRY_POINT:
             
             if proto_rqst == LOGIN_REQUEST:
-                TweeterServer.login_request(self, socket_client, addr_client, data_dict, storage)
+                self.login_request(socket_client, addr_client, data_dict, storage)
             elif proto_rqst == LOGOUT_REQUEST:
-                TweeterServer.logout_request(self, socket_client, addr_client, data_dict, storage)
+                self.logout_request(socket_client, addr_client, data_dict, storage)
             elif proto_rqst == REGISTER_REQUEST:
-                TweeterServer.register_request(self, socket_client, addr_client, data_dict, storage)
+                self.register_request(socket_client, addr_client, data_dict, storage)
             
             elif proto_rqst in  (CREATE_TWEET_REQUEST, FOLLOW_REQUEST, RETWEET_REQUEST, FEED_REQUEST, PROFILE_REQUEST):
-                TweetServer.tweet_request(self, socket_client, addr_client, data_dict, storage)
+                TweetServer.tweet_request(socket_client, addr_client, data_dict, storage)
             
             elif proto_rqst == ALIVE_REQUEST:
-                TweeterServer.alive_request(self, socket_client, addr_client, data_dict, storage)
+                self.alive_request(socket_client, addr_client, data_dict, storage)
                       
         elif type_rqst == LOGGER:
             
             if proto_rqst == LOGIN_REQUEST:
-                TweeterServer.get_token(self, socket_client, addr_client, data_dict, storage)
+                self.get_token(socket_client, addr_client, data_dict, storage)
             elif proto_rqst == LOGOUT_REQUEST:
-                TweeterServer.get_logout(self, socket_client, addr_client, data_dict, storage)
+                self.get_logout(socket_client, addr_client, data_dict, storage)
             elif proto_rqst == REGISTER_REQUEST:
-                TweeterServer.get_register(self, socket_client, addr_client, data_dict, storage)
+                self.get_register(socket_client, addr_client, data_dict, storage)
             
             elif proto_rqst in  (LOGIN_RESPONSE, REGISTER_RESPONSE, CHORD_RESPONSE, LOGOUT_RESPONSE): 
-                TweeterServer.set_data(self, socket_client, addr_client, data_dict,storage)
+                self.set_data(socket_client, addr_client, data_dict,storage)
             
         elif type_rqst == TWEET:
             
             if proto_rqst == CREATE_TWEET_REQUEST:
-                TweetServer.create_tweet(self, socket_client, addr_client, data_dict, storage)
+                self.create_tweet(socket_client, addr_client, data_dict, storage)
             elif proto_rqst == FOLLOW_REQUEST:
-                TweeterServer.create_follow(self, socket_client, addr_client, data_dict,storage)
+                self.create_follow(socket_client, addr_client, data_dict,storage)
             elif proto_rqst == RETWEET_REQUEST: 
-                TweeterServer.create_retweet(self, socket_client, addr_client, data_dict,storage)
+                self.create_retweet(socket_client, addr_client, data_dict,storage)
             elif proto_rqst == FEED_REQUEST:
-                TweeterServer.feed_get(self, socket_client, addr_client, data_dict, storage)
+                self.feed_get(socket_client, addr_client, data_dict, storage)
             elif proto_rqst == PROFILE_REQUEST:
-                TweeterServer.profile_get(self, socket_client, addr_client, data_dict, storage)
+                self.profile_get(socket_client, addr_client, data_dict, storage)
             elif proto_rqst == RECENT_PUBLISHED_REQUEST:
-                TweetServer.recent_publish(self, socket_client, addr_client, data_dict, storage)
+                self.recent_publish(socket_client, addr_client, data_dict, storage)
             elif proto_rqst == CHECK_TWEET_REQUEST:
-                TweetServer.tweet_check(self, socket_client, addr_client, data_dict, storage)
+                self.tweet_check(socket_client, addr_client, data_dict, storage)
             elif proto_rqst in (CREATE_TWEET_RESPONSE, FOLLOW_RESPONSE, RETWEET_RESPONSE, FEED_RESPONSE, PROFILE_RESPONSE, RECENT_PUBLICHED_RESPONSE, CHECK_TWEET_RESPONSE):
-                TweeterServer.set_data(self, socket_client, addr_client, data_dict,storage)
+                self.set_data(socket_client, addr_client, data_dict,storage)
         
         else: 
             pass
@@ -210,7 +222,7 @@ class TweeterServer(MultiThreadedServer):
         data = {
                 "type" : LOGGER,
                 "proto": CHORD_REQUEST,
-                "Hash": nick,
+                "hash": nick,
                 "id_request": state.id,
         } #Construir la peticion del chord
         
@@ -1162,12 +1174,14 @@ class TweeterServer(MultiThreadedServer):
         socket_client.close()
         if self.chord_id: 
             return
-        suc = data_dict.get('sucessor', None)
-        sib = data_dict('sibling',None)
-        type_node, ips = REPLIC_NODE, suc if suc else NEW_NODE, sib
-
+        suc = data_dict.get('successor', None)
+        sib = data_dict('siblings',None)
+        
+        self.say_hello(sib)
         self.chord_id = data_dict['chord_id']
 
+        type_node, ips = REPLIC_NODE, self.primary if sib else NEW_NODE, suc
+        
         ips = random.shufle(ips)
         data = {
             'type': LOGGER,
@@ -1179,9 +1193,10 @@ class TweeterServer(MultiThreadedServer):
         }
         
         for s in ips:
+            if s == self.my_if: continue
             try:
                 skt = socket.socket(AF_INET,SOCK_STREAM)
-                skt.connect((s, CHORD_PORT))
+                skt.connect((s, PORT_GENERAL_LOGGER))
 
                 while True:
 
@@ -1326,3 +1341,43 @@ class TweeterServer(MultiThreadedServer):
 
             
             socket_client.close()
+
+
+    def say_hello(self, siblings):
+        self.siblings = siblings
+        data = {
+            'type': LOGGER,
+            'proto': HELLO,
+            'primary': len(siblings) < 5
+        }
+
+        for s in siblings:
+            skt = socket.socket(AF_INET,PORT_GENERAL_LOGGER)
+            skt.connect((s, CHORD_PORT))
+            skt.send(util.encose(data))
+            
+            data_x = skt.recv(1024)
+            data_x = util.decode(data_x)
+            if self.primary == []:
+                self.primary = data_x['primary']
+
+            skt.close()
+
+        if len(siblings) < 5:
+            self.primary.append(self.my_ip)
+
+
+    def say_welcome(self, socket_client, addr_client, data_dict, storage):
+        
+        data = {
+            'type': LOGGER,
+            'proto': WELCOME,
+            'primary': self.primary
+        }
+        socket_client.send(util.encode(data))
+        socket_client.close()
+        
+        if data_dict['primary']:
+            self.primary.append(addr_client[0]) 
+        self.siblings.append(addr_client[0])
+        
