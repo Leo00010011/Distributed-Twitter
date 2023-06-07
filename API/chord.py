@@ -4,15 +4,20 @@ from threading import Thread, Event, Lock
 import concurrent.futures
 from time import sleep
 from socket import socket, AF_INET, SOCK_STREAM,gethostbyname,gethostname
-from threaded_server import MultiThreadedServer
 from hashlib import shake_256
 from math import floor, log2
 import hashlib
 import os
 import datetime
-import util
 import sys
 import json
+
+try:
+    from threaded_server import MultiThreadedServer
+    import util    
+except:
+    import API.util as util
+    from API.threaded_server import MultiThreadedServer
 
 # cuando termina de insertar
 # type: Chord(Utils)
@@ -136,7 +141,7 @@ class ChordNode:
        self.as_max = as_max     
 
 class ChordServer:
-    def __init__(self,DHT_name,port,entry_points,disable_log,is_the_first = False):
+    def __init__(self,DHT_name,port,disable_log,is_the_first = False):
         self.DHT_name = DHT_name
 
         self.disable_realtime_log = disable_log
@@ -145,7 +150,13 @@ class ChordServer:
         self.Ft: list[ChordNode] = [None]*floor(log2(self.max_id + 1))
         self.state_storage = StateStorage()
         self.port = port
-        self.entry_points = entry_points
+
+        self.entry_points = []
+        with open('entrys.txt', 'r') as ft:
+            for ip in ft.read().split(sep='\n'):
+                self.entry_points.append(str(ip))
+        shuffle(self.entry_points)        
+
         self.server : MultiThreadedServer = MultiThreadedServer(self.port,100,100,2,self.create_dispatcher(), log = False)
         self.get_succ_req_cmd = 'get_succ_req'
         self.get_succ_resp_cmd = 'get_succ_resp'
@@ -249,8 +260,9 @@ class ChordServer:
             'proto': util.NEW_LOGGER_REQUEST,
         }
         text = json.dumps(msg_dict)
-        response = self.send_and_close(entry,text)
+        response = self.send_and_close(entry,text,port=util.PORT_GENERAL_ENTRY)
         resp_dict = util.decode(response)
+        print(resp_dict)
         return resp_dict['ip_loggers']
 
     def sleeping_log(self):
@@ -491,7 +503,7 @@ class ChordServer:
             'proto': util.INSERTED_LOGGER_REQUEST
         }
         self.update_log('starting to send (register)')
-        self.send_and_close(entry_point,json.dumps(msg_dict))
+        self.send_and_close(entry_point,json.dumps(msg_dict),port=util.PORT_GENERAL_ENTRY )       
 
 
 
@@ -560,24 +572,22 @@ class ChordServer:
         }
         return json.dumps(msg)
 
-    def send_and_close(self,ip,msg: str,port = 15000):
+    def send_and_close(self,ip,msg: str,countbytes = 15000, port= None):
         s = socket(AF_INET,SOCK_STREAM)
+        if port is None:
+            port = self.port        
+        response = None
         try:
-            s.connect((ip,self.port))
-            s.sendall(msg.encode())
-            response = s.recv(port)
+            s.connect((ip,port))            
+            s.send(msg.encode())            
+            response = s.recv(countbytes)            
             s.close()
         except Exception as e:
-            self.update_log(str(e))
-            raise e
+            self.update_log(str(e))            
+            #raise e
         self.update_log('send ended')
         return response
 
-print('disable log?')
-log = input()
-server = ChordServer(DHT_name='Log',port = 15000,entry_points=['entry'], disable_log=log)
-server.start()
-    
 
 
 
