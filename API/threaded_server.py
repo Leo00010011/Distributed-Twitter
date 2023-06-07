@@ -97,8 +97,7 @@ def test_printer(id,content,event:Event):
         print(f'worker_{id}' + content)
 
 class MultiThreadedServer:
-    def __init__(self,port: int, task_max: int, thread_count: int, timeout: int, parse_func):
-    
+    def __init__(self,port: int, task_max: int, thread_count: int, timeout: int, parse_func, log = True):
         self.task_max = task_max
         self.thread_count = thread_count
         self.current_thread_count = 0
@@ -108,16 +107,19 @@ class MultiThreadedServer:
         self.task_list = Queue(task_max)
         self.storage = StateStorage()
         self.port = port
+        self.log = log
 
     def consumer_func(self, id : int,task_list: Queue ,event :Event, parse_func,self_timeout,storage):
         while not event.is_set() or not task_list.empty():
             try:
                 task = task_list.get(timeout=self_timeout)
-                print(f'START worker_{id}')
+                if self.log:
+                    print(f'START worker_{id}')
                 parse_func(id,task,event,storage)
             except Empty:
                 continue
-        print(f'END worker_{id}')
+        if self.log:
+            print(f'END worker_{id}')
         self.current_thread_count -= 1
     
     def start_test(self):
@@ -129,7 +131,8 @@ class MultiThreadedServer:
                 if(self.end_event.is_set()):
                     break
                 self.task_list.put(task)
-        print('ENDED listening thread')
+        if self.log:
+            print('ENDED listening thread')
 
 
     def start_server(self):

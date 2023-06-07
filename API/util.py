@@ -13,6 +13,7 @@ CLIENT = 0
 ENTRY_POINT = 1
 LOGGER = 2
 CHORD = 3
+CHORD_INTERNAL = 4
 
 # Protocolos de pedidos
 LOGIN_REQUEST = 0
