@@ -186,3 +186,19 @@ def clear():
         os.system("cls")
     else:
         os.system("clear")
+
+class Cache:
+
+    def __init__(self) -> None:
+        self.profiles = {}
+
+    def add_something(self, date, text, nick, nick_original, date_original):
+        profile = self.profiles.get(nick)
+        if profile is None:
+            self.profiles[nick] = {}
+        profile[date] = (text, nick_original, date_original)
+
+    def add_many_something(self, list):
+        for date, text, nick, nick_original, date_original in list:
+            self.add_many_something(date, text, nick, nick_original, date_original)
+        

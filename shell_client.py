@@ -8,7 +8,8 @@ class ShellClient():
         self.name = None
         self.nick = None
         self.token = None
-        self.run()        
+        self.cache = util.Cache()
+        self.run() 
 
     def print_Dwitter(self):
         print("||=====================================||")
@@ -301,6 +302,41 @@ class ShellClient():
                 continue
             else:
                 break
+    
+    def feed(self):
+
+        util.clear()
+        self.print_Dwitter()
+        print()
+        while True:            
+            print('<--- Feed --->')
+
+            succesed, tweets_list = self.client.feed(self.token, self.nick)
+            if succesed:
+                if len(tweets_list) > 0:
+                    i = 0
+                    self.cache.add_many_something(tweets_list)
+                    for date, text, nick, nick_original, date_original_tweet in tweets_list:                        
+                        if nick_original is None:
+                            print(f'{i} Tweet de {nick} del {date}:\n')
+                            print(text)
+                        else:
+                            print(f'{i} ReTweet de {nick} del {date}')
+                            print(f'Tweet Original de {nick_original} del {date_original_tweet}:\n')
+                            print(text)
+                else:
+                    print('No hay Dweets, ni ReDweets nuevos')                
+            else:
+                print('Ha ocurrido un ERROR :"(')
+                print('<+++++ Error +++++>')
+                print(tweets_list)
+                print('<+++++|+++++|+++++>')
+            
+            print()
+            print('Pulse ENTER para volver a cargar, o escriba "q" para regresar al menu principal')
+            inp = input()
+            if inp != 'q':
+                return
 
 
 s = ShellClient()
