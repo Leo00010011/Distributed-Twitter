@@ -8,23 +8,13 @@ import random
 try:
     import util
     from server import Server
-    from util import Stalker, Dispatcher
-    from util import CLIENT, ENTRY_POINT, LOGGER, CHORD
-    from util import LOGIN_REQUEST, LOGIN_RESPONSE, CHORD_REQUEST, CHORD_RESPONSE, NEW_LOGGER_REQUEST, NEW_LOGGER_RESPONSE, ALIVE_REQUEST, ALIVE_RESPONSE, REGISTER_REQUEST, REGISTER_RESPONSE, TRANSFERENCE_REQUEST
-    from util import TRANSFERENCE_RESPONSE, TRANSFERENCE_OVER, CREATE_TWEET_REQUEST, CREATE_TWEET_RESPONSE, RETWEET_REQUEST, RETWEET_RESPONSE, FOLLOW_REQUEST, FOLLOW_RESPONSE, FEED_REQUEST, FEED_RESPONSE
-    from util import PROFILE_REQUEST, PROFILE_RESPONSE, NEW_ENTRYPOINT_REQUEST, NEW_ENTRYPOINT_RESPONSE, LOGOUT_REQUEST, LOGOUT_RESPONSE, GET_TOKEN, RECENT_PUBLISHED_REQUEST, RECENT_PUBLISHED_RESPONSE, CHECK_TWEET_REQUEST, CHECK_TWEET_RESPONSE
-    from util import PORT_GENERAL_ENTRY, CHORD_PORT, PORT_GENERAL_LOGGER
+    from util import *
     import view
     from threaded_server import MultiThreadedServer
 except:
     import API.util as util
     from API.server import Server
-    from API.util import Stalker, Dispatcher
-    from API.util import CLIENT, ENTRY_POINT, LOGGER, CHORD
-    from API.util import LOGIN_REQUEST, LOGIN_RESPONSE, CHORD_REQUEST, CHORD_RESPONSE, NEW_LOGGER_REQUEST, NEW_LOGGER_RESPONSE, ALIVE_REQUEST, ALIVE_RESPONSE, REGISTER_REQUEST, REGISTER_RESPONSE, TRANSFERENCE_REQUEST
-    from API.util import TRANSFERENCE_RESPONSE, TRANSFERENCE_OVER, CREATE_TWEET_REQUEST, CREATE_TWEET_RESPONSE, RETWEET_REQUEST, RETWEET_RESPONSE, FOLLOW_REQUEST, FOLLOW_RESPONSE, FEED_REQUEST, FEED_RESPONSE
-    from API.util import PROFILE_REQUEST, PROFILE_RESPONSE, NEW_ENTRYPOINT_REQUEST, NEW_ENTRYPOINT_RESPONSE, LOGOUT_REQUEST, LOGOUT_RESPONSE, GET_TOKEN, RECENT_PUBLISHED_REQUEST, RECENT_PUBLISHED_RESPONSE, CHECK_TWEET_REQUEST, CHECK_TWEET_RESPONSE
-    from API.util import PORT_GENERAL_ENTRY, CHORD_PORT, PORT_GENERAL_LOGGER
+    from API.util import *
     import API.view as view
     from API.threaded_server import MultiThreadedServer
 
@@ -38,7 +28,7 @@ RETWEET_TABLE = 3
 FOLLOW_TABLE = 4
 class TweeterServer(MultiThreadedServer):
     
-    def __init__(self,port: int, task_max: int, thread_count: int, timout: int, parse_func):
+    def __init__(self,port: int, task_max: int, thread_count: int, timout: int):
 
         MultiThreadedServer.__init__(self,port, task_max, thread_count, timout, self.switch)
         
@@ -52,10 +42,10 @@ class TweeterServer(MultiThreadedServer):
         with open('entrys.txt', 'r') as ft:
             for ip in ft.read().split(sep='\n'):
                 self.entry_point_ips.append(str(ip))
-        self.current_index_entry_point_ip = rand.randint(0, len(self.entry_point_ips))
+        self.current_index_entry_point_ip = random.randint(0, len(self.entry_point_ips))
         self.chord_id = None
 
-    def switch(self, id:int, task: tuple[socket,object], event:Event, storage):
+    def switch(self, id:int, task: tuple[socket.socket,object], event:Event, storage):
         '''
         Interprete y verificador de peticiones generales.
         Revisa que la estructura de la peticion sea adecuada,
@@ -68,7 +58,7 @@ class TweeterServer(MultiThreadedServer):
         data_byte = socket_client.recv(1024)
         
         try:
-            data_dict = util.decode(data_bytes)
+            data_dict = util.decode(data_byte)
             type_rqst = data_dict["type"]       
             proto_rqst = data_dict["proto"]
         
@@ -93,7 +83,7 @@ class TweeterServer(MultiThreadedServer):
                 self.register_request(socket_client, addr_client, data_dict, storage)
             
             elif proto_rqst in  (CREATE_TWEET_REQUEST, FOLLOW_REQUEST, RETWEET_REQUEST, FEED_REQUEST, PROFILE_REQUEST):
-                TweetServer.tweet_request(socket_client, addr_client, data_dict, storage)
+                self.tweet_request(socket_client, addr_client, data_dict, storage)
             
             elif proto_rqst == ALIVE_REQUEST:
                 self.alive_request(socket_client, addr_client, data_dict, storage)
@@ -126,7 +116,7 @@ class TweeterServer(MultiThreadedServer):
                 self.recent_publish(socket_client, addr_client, data_dict, storage)
             elif proto_rqst == CHECK_TWEET_REQUEST:
                 self.tweet_check(socket_client, addr_client, data_dict, storage)
-            elif proto_rqst in (CREATE_TWEET_RESPONSE, FOLLOW_RESPONSE, RETWEET_RESPONSE, FEED_RESPONSE, PROFILE_RESPONSE, RECENT_PUBLICHED_RESPONSE, CHECK_TWEET_RESPONSE):
+            elif proto_rqst in (CREATE_TWEET_RESPONSE, FOLLOW_RESPONSE, RETWEET_RESPONSE, FEED_RESPONSE, PROFILE_RESPONSE, RECENT_PUBLISHED_RESPONSE, CHECK_TWEET_RESPONSE):
                 self.set_data(socket_client, addr_client, data_dict,storage)
         
         else: 
@@ -365,7 +355,7 @@ class TweeterServer(MultiThreadedServer):
                 view.CreateUser(name, nick, hashlib.sha1(bytes(password)).hexdigest(), hashlib.sha1(bytes(nick)).hexdigest())
                 data = {
                     'type': LOGGER,
-                    'proto': REQUEST_RESPONSE,
+                    'proto': REGISTER_RESPONSE,
                     'succesed': True,
                     'error': None,
                     'id_request': data_dict['id_request']
@@ -373,7 +363,7 @@ class TweeterServer(MultiThreadedServer):
             except:
                 data = {
                     'type': LOGGER,
-                    'proto': REQUEST_RESPONSE,
+                    'proto': REGISTER_RESPONSE,
                     'succesed': False,
                     'error': 'Error trying to register',
                     'id_request': data_dict['id_request']
@@ -381,7 +371,7 @@ class TweeterServer(MultiThreadedServer):
         else:
             data = {
                     'type': LOGGER,
-                    'proto': REQUEST_RESPONSE,
+                    'proto': REGISTER_RESPONSE,
                     'succesed': False,
                     'error': 'User Nick must be unique',
                     'id_request': data_dict['id_request']
@@ -665,10 +655,11 @@ class TweeterServer(MultiThreadedServer):
                     socket_client.close()
                 except:
                     pass
-
+        
+        proto = data_dict['proto']
         data = {
                 'type':TWEET,
-                'proto': proto[0:len(proto)- 7] + 'RESPONSE',
+                'proto': proto+1,
                 'succesed': False,
                 'error': 'Something went wrong in the network connection',
                 'id_request':  data_dict['id_request']
@@ -780,14 +771,14 @@ class TweeterServer(MultiThreadedServer):
             }
             prof = view.GetProfileRange(data_dict['nick_profile'], data_dict['block']*10, 10)
             i=0
-            for t in pref[0]:
+            for t in prof[0]:
                 msg['data_profile'][str(t.date)] = (t.text, None) 
                 i+=1
             
             if i< 10: msg['over'] = True 
             else: msg['over'] = False
 
-            for t in pref[1]:
+            for t in prof[1]:
                 state = storage.insert_state()
                 data = {
                      'type': TWEET,
@@ -825,7 +816,7 @@ class TweeterServer(MultiThreadedServer):
             
                 if w:
                     if state.desired_dats['succcesed']:
-                        data = state.desired_data['date']
+                        date = state.desired_data['date']
                         text = state.desired_data['text']
                         nick = state.desired_data['nick']
                         msg['data_profile'][str(date)] = (text, nick)
@@ -1028,7 +1019,7 @@ class TweeterServer(MultiThreadedServer):
                     state2 = storage.get_state()
                     data = {
                         'type': TWEET,
-                        'proto': RECENT_PUBLICHED_REQUEST,
+                        'proto': RECENT_PUBLISHED_REQUEST,
                         'nick': f.followed,
                         "id_request": state.id,
                     }
@@ -1046,7 +1037,7 @@ class TweeterServer(MultiThreadedServer):
                         msg['data'].append((state.desired_data["date"], state.desired_data["text"], state.desired_data["nick"], state.desired_data.get('nick2', None), state.desired_data.get('date_tweet', None)))
 
             socket_client.send(util.encode(msg))
-            socket_clien.close()
+            socket_client.close()
             return
         
         msg = {
@@ -1058,7 +1049,7 @@ class TweeterServer(MultiThreadedServer):
                     'data':[]
                 }   
         socket_client.send(util.encode(msg))
-        socket_clien.close()
+        socket_client.close()
                       
     def tweet_check(self, socket_client, addr_client, data_dict,storage):
         nick = data_dict['nick']
@@ -1133,7 +1124,7 @@ class TweeterServer(MultiThreadedServer):
                     if w and state.desired_data["successed"]: 
                         data = {
                             'type': TWEET,
-                            'proto': RECENT_PUBLICHED_RESPONSE,
+                            'proto': RECENT_PUBLISHED_RESPONSE,
                             'succesed':  True,
                             'error':None,
                             "id_request": data_dict['id_request'],
@@ -1147,7 +1138,7 @@ class TweeterServer(MultiThreadedServer):
             return
         data = {
                 'type': TWEET,
-                'proto': RECENT_PUBLICHED_RESPONSE,
+                'proto': RECENT_PUBLISHED_RESPONSE,
                 'succesed':  True,
                 'error':None,
                 "id_request": data_dict['id_request'],
@@ -1255,6 +1246,7 @@ class TweeterServer(MultiThreadedServer):
 
     def CopyData(self, data_dict):
         table = data_dict['table']
+        data = data_dict['data']
         for i in data_dict['data']:
 
             if table == TWEET_TABLE:
@@ -1273,7 +1265,7 @@ class TweeterServer(MultiThreadedServer):
             if table == FOLLOW_TABLE:
                 follower = data["follower"]
                 followed = data['followed']
-                view.CreateFollow(follower,folowed)
+                view.CreateFollow(follower,followed)
             
             if table == TOKEN_TABLE:
                 nick = data["nick"]

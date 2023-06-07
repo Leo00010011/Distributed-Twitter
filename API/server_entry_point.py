@@ -897,7 +897,7 @@ class EntryPointServerTheaded(MultiThreadedServer):
             msg = {
                 'type': ENTRY_POINT,
                 'proto': NEW_LOGGER_RESPONSE,
-                'ip_loggers': None
+                'ip_loggers': []
             }        
         task[0].send(util.encode(msg))
         task[0].close()
