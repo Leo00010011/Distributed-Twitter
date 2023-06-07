@@ -8,14 +8,16 @@ try:
     from util import CLIENT, ENTRY_POINT, LOGGER,LOGIN_REQUEST, LOGIN_RESPONSE,\
         NEW_LOGGER_RESPONSE, NEW_LOGGER_REQUEST, REGISTER_REQUEST, REGISTER_RESPONSE, \
         CREATE_TWEET_REQUEST, CREATE_TWEET_RESPONSE, PROFILE_REQUEST, PROFILE_RESPONSE,\
-        FOLLOW_REQUEST,FOLLOW_RESPONSE, LOGOUT_REQUEST, LOGOUT_RESPONSE
+        FOLLOW_REQUEST,FOLLOW_RESPONSE, LOGOUT_REQUEST, LOGOUT_RESPONSE, RETWEET_REQUEST,\
+        RETWEET_RESPONSE
 except:
     import API.util as util
     from API.util import PORT_GENERAL_ENTRY, PORT_GENERAL_LOGGER
     from API.util import CLIENT, ENTRY_POINT, LOGGER,LOGIN_REQUEST, LOGIN_RESPONSE,\
         NEW_LOGGER_RESPONSE, NEW_LOGGER_REQUEST, REGISTER_REQUEST, REGISTER_RESPONSE,\
         CREATE_TWEET_REQUEST, CREATE_TWEET_RESPONSE, PROFILE_REQUEST, PROFILE_RESPONSE,\
-        FOLLOW_REQUEST,FOLLOW_RESPONSE, LOGOUT_REQUEST, LOGOUT_RESPONSE
+        FOLLOW_REQUEST,FOLLOW_RESPONSE, LOGOUT_REQUEST, LOGOUT_RESPONSE, RETWEET_REQUEST,\
+        RETWEET_RESPONSE
 class Client():
 
     def __init__(self):
@@ -26,13 +28,14 @@ class Client():
         with open('entrys.txt', 'r') as ft:
             for ip in ft.read().split(sep='\n'):
                 self.entry_point_ips.append(str(ip))
-        self.current_index_entry_point_ip = rand.randint(0, len(self.entry_point_ips))
+        rand.shuffle(self.entry_point_ips)
+        self.current_index_entry_point_ip = 0
         
 
-    def try_send_recv(self, message, count_bytes_recv=10240):
+    def try_send_recv(self, message, count_bytes_recv=15000):
 
         error = None        
-        for i in range(0,len(self.entry_point_ips)):
+        for _ in range(0,len(self.entry_point_ips)):
             try:
                 send_data = util.encode(message)
                 s = socket.socket(AF_INET, SOCK_STREAM)
@@ -44,8 +47,10 @@ class Client():
                 return True, recv_data
             except Exception as e:                
                 print(f'Entry "{ip}" caido')
-                self.current_index_entry_point_ip = (self.current_index_entry_point_ip+1) % len(self.entry_point_ips)
+                self.current_index_entry_point_ip = (self.current_index_entry_point_ip+1) % len(self.entry_point_ips)                
                 error = e
+            finally:
+                s.close()
         return False, error
 
     def sign_up(self, name, nick, password):
@@ -211,13 +216,53 @@ class Client():
             # print('Que mierda me respondieron?')
             return False, 'Que mierda me respondieron?'
     
-    def retweet(self, id_tweet, token):
+    def retweet(self, token, nick, nick_profile, date):
         '''
-        Publicar tweet
-        -------------
-        `id_tweet`: Id del Tweet
-        `token`: Token
+        Publicar retweet
         '''
+        
+        msg = {
+            'type': CLIENT,
+            'proto': RETWEET_REQUEST,
+            'token': token,
+            'nick': nick,
+            'date': date,
+            'nick_profile': nick_profile
+        }
+        
+        good, recv_data = self.try_send_recv(msg)
+        if not good:
+            return False, str(recv_data)
+        
+        if recv_data['proto'] == RETWEET_RESPONSE:
+            if recv_data['succesed']:
+                return True, None
+            else:
+                # print(recv_data['error'])
+                return False, recv_data['error']
+        else:
+            # print('Que mierda me respondieron?')
+            return False, 'Que mierda me respondieron?'
+        
+    def feed(self, token, nick):
 
-        #TODO
-        raise NotImplementedError()
+        msg = {
+            'type': CLIENT,
+            'proto': RETWEET_REQUEST,
+            'token': token,
+            'nick': nick
+        }
+        
+        good, recv_data = self.try_send_recv(msg)
+        if not good:
+            return False, str(recv_data)
+        
+        if recv_data['proto'] == RETWEET_RESPONSE:
+            if recv_data['succesed']:
+                return True, recv_data['data']
+            else:
+                # print(recv_data['error'])
+                return False, recv_data['error']
+        else:
+            # print('Que mierda me respondieron?')
+            return False, 'Que mierda me respondieron?'

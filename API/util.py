@@ -13,6 +13,8 @@ CLIENT = 0
 ENTRY_POINT = 1
 LOGGER = 2
 CHORD = 3
+CHORD_INTERNAL = 4
+TWEET = 5
 
 # Protocolos de pedidos
 LOGIN_REQUEST = 0
@@ -49,8 +51,16 @@ CHECK_TWEET_REQUEST = 30
 CHECK_TWEET_RESPONSE = 31
 ADD_LOGGER = 32
 REMOVE_LOGGER = 33
-ADD_ENTRY = 32
-REMOVE_ENTRY = 33
+ADD_ENTRY = 34
+REMOVE_ENTRY = 35
+INSERTED_LOGGER_REQUEST = 36
+INSERTED_LOGGER_RESPONSE = 37
+CHECK_USER_REQUEST = 38
+CHECK_USER_RESPONSE = 39
+GET_TWEET = 40
+PROFILE_GET = 41
+HELLO = 42
+WELCOME = 43
 
 # Puertos de escucha
 PORT_GENERAL_ENTRY = 15069
@@ -97,13 +107,17 @@ class Stalker:
     para verificar si est'a vivo a'un, pero dando mas probabilidad a los
     IP menos actualizados.
     '''
-    def __init__(self, type):
+    def __init__(self, type, umbral_alive = 90, umbral_deads=30):
         '''
         Inicializa la estructura Stalker con el tipo de Server que la aloje.
         Internamente utiliza una lista con tuplas de la forma (tiempo, IP:Port)
         '''
         self.list = []
         self.type = type
+        self.umbral_alive = umbral_alive
+        self.umbral_deads = umbral_deads
+        self.alive_dirs = []
+        self.deads_dirs = []
 
     def insert_IP(self, dir):
         '''
@@ -143,15 +157,18 @@ class Stalker:
         _, dir = random.choices(self.list,weights=range(len(self.list), 0, -1),k=1)[0]
         return dir
     
-    def dieds_dirs(self, umbral_time):
+    def refresh_dirs(self):
 
+        self.alive_dirs = []
         real_time = time.time()
-        dieds = []
+        self.deads_dirs = []
         for i in range(len(self.list)):
             t, dir = self.list[i]
-            if real_time - t >= umbral_time:
-                dieds.append(dir)
-        return dieds
+            if real_time - t >= self.umbral_deads:
+                self.deads_dirs.append(dir)
+            if real_time - t <= self.umbral_alive:
+                self.alive_dirs.append(dir)
+        return self.deads_dirs.copy()
 
     def msg_stalk(self):
         '''
@@ -169,3 +186,19 @@ def clear():
         os.system("cls")
     else:
         os.system("clear")
+
+class Cache:
+
+    def __init__(self) -> None:
+        self.profiles = {}
+
+    def add_something(self, date, text, nick, nick_original, date_original):
+        profile = self.profiles.get(nick)
+        if profile is None:
+            self.profiles[nick] = {}
+        profile[date] = (text, nick_original, date_original)
+
+    def add_many_something(self, list):
+        for date, text, nick, nick_original, date_original in list:
+            self.add_many_something(date, text, nick, nick_original, date_original)
+        
