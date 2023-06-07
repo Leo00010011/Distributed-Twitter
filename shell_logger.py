@@ -20,7 +20,7 @@ class ShellTweeter():
         self.tweet_server.start_server()
     
     def start_ChordServer(self, first):
-        self.chord_server = ChordServer(DHT_name='Log',port = CHORD_PORT,is_the_first= first,id = None, disable_log=True)
+        self.chord_server = ChordServer(DHT_name='Log',port = CHORD_PORT, disable_log=False)
         self.chord_server.start()
 
     def options(self):          

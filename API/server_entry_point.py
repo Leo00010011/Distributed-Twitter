@@ -8,7 +8,7 @@ try:
     import util
     from threaded_server import MultiThreadedServer    
     from util import Stalker, Dispatcher
-    from util import PORT_GENERAL_ENTRY, PORT_GENERAL_LOGGER
+    from util import PORT_GENERAL_ENTRY, PORT_GENERAL_LOGGER, CHORD
     from util import CLIENT, ENTRY_POINT, LOGGER,LOGIN_REQUEST, LOGIN_RESPONSE,\
         NEW_LOGGER_RESPONSE, NEW_LOGGER_REQUEST, REGISTER_RESPONSE, REGISTER_REQUEST,\
         CREATE_TWEET_REQUEST, CREATE_TWEET_RESPONSE, PROFILE_REQUEST, PROFILE_RESPONSE,\
@@ -19,7 +19,7 @@ except:
     import API.util as util
     from API.threaded_server import MultiThreadedServer    
     from API.util import Stalker, Dispatcher
-    from API.util import PORT_GENERAL_ENTRY, PORT_GENERAL_LOGGER
+    from API.util import PORT_GENERAL_ENTRY, PORT_GENERAL_LOGGER, CHORD
     from API.util import CLIENT, ENTRY_POINT, LOGGER,LOGIN_REQUEST, LOGIN_RESPONSE,\
         NEW_LOGGER_RESPONSE, NEW_LOGGER_REQUEST, REGISTER_RESPONSE, REGISTER_REQUEST,\
         CREATE_TWEET_REQUEST, CREATE_TWEET_RESPONSE, PROFILE_REQUEST, PROFILE_RESPONSE,\
@@ -83,18 +83,20 @@ class EntryPointServerTheaded(MultiThreadedServer):
     def add_task(self, new_task):
         for ip, tasks in self.pending_tasks.items():
             repeat_task = False
-            for task in tasks:
+            for i, task in enumerate(tasks):
                 if task == new_task:
                     repeat_task = True
                     break
             if repeat_task:
                 continue
-            self.pending_tasks[ip] = new_task
+            tasks.append(new_task)
     
     def send_pending_tasks(self, event: Event):
         self.execute_pending_tasks = True
         event.wait(rand.randint(3,30))
         while not event.is_set():
+            print('Tareas Pendientes:')
+            print(self.pending_tasks)
             for ip, tasks in self.pending_tasks.items():
                 for i, task in enumerate(tasks.copy()):
                     try:
@@ -127,7 +129,9 @@ class EntryPointServerTheaded(MultiThreadedServer):
         except Exception as e:
             print(e)
             return
-                
+
+        print('Nuevo Mensaje')
+        print(type_msg, protocol)
         if type_msg == CLIENT:
             if protocol == LOGIN_REQUEST:
                 self.login_request_from_client(id, task, event, storage, data)
@@ -148,6 +152,8 @@ class EntryPointServerTheaded(MultiThreadedServer):
         elif type_msg == ENTRY_POINT:
             if protocol == ALIVE_REQUEST:                
                 self.alive_request_from_entry_point(id, task, event, storage, data)
+            elif protocol == ADD_LOGGER:
+                self.add_logger_from_entry_point(id, task, event, storage, data)
             else:
                 print('Q pifia metes?')
         elif type_msg == LOGGER:
@@ -164,15 +170,18 @@ class EntryPointServerTheaded(MultiThreadedServer):
             elif protocol == RETWEET_RESPONSE:
                 self.feed_response_from_logger(id, task, event, storage, data)
             elif protocol == FEED_RESPONSE:
-                self.feed_response_from_logger(id, task, event, storage, data)
-            elif protocol == NEW_LOGGER_REQUEST:
+                self.feed_response_from_logger(id, task, event, storage, data)            
+            else:
+                print('Q pifia metes?')
+        elif type_msg == CHORD:
+            if protocol == NEW_LOGGER_REQUEST:
                 self.new_logger_request_from_logger(id, task, event, storage, data)
             elif protocol == INSERTED_LOGGER_REQUEST:
                 self.inserted_logger_request_from_logger(id, task, event, storage, data)
             else:
                 print('Q pifia metes?')
         else:
-            pass
+            print('Q pifia metes?')
 
     def try_send_logger(self, message):
 
@@ -872,7 +881,7 @@ class EntryPointServerTheaded(MultiThreadedServer):
     #------------------ NEW LOGGER ------------------#
 
     def new_logger_request_from_logger(self, id:int,task: tuple[socket.socket,object],event:Event, storage, data: dict):
-        
+                
         self.lock.acquire()
         if len(self.stalker_loggers.list) > 0:
             if self.stalker_loggers.extract_IP(task[1][0]) is not None:
@@ -892,7 +901,7 @@ class EntryPointServerTheaded(MultiThreadedServer):
                 'proto': NEW_LOGGER_RESPONSE,
                 'ip_loggers': ip_loggers
             }
-        else:
+        else:            
             self.lock.release()
             msg = {
                 'type': ENTRY_POINT,
@@ -900,11 +909,10 @@ class EntryPointServerTheaded(MultiThreadedServer):
                 'ip_loggers': []
             }        
         task[0].send(util.encode(msg))
-        task[0].close()
+        task[0].close()        
 
 
-    def inserted_logger_request_from_logger(self, id:int,task: tuple[socket.socket,object],event:Event, storage, data: dict):
-                        
+    def inserted_logger_request_from_logger(self, id:int,task: tuple[socket.socket,object],event:Event, storage, data: dict):        
         with self.lock:
             self.stalker_loggers.update_IP(task[1][0])
         msg = {
@@ -914,4 +922,9 @@ class EntryPointServerTheaded(MultiThreadedServer):
         self.add_task((ADD_LOGGER, task[1][0]))
         task[0].send(util.encode(msg))
         task[0].close()
+
+    def add_logger_from_entry_point(self, id:int,task: tuple[socket.socket,object],event:Event, storage, data: dict):
+
+        with self.lock:
+            self.stalker_loggers.update_IP(data['ip'])
  
