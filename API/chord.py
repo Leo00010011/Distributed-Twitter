@@ -1,4 +1,4 @@
-from random import randint,choice
+from random import randint,choice, shuffle
 from queue import Queue, Empty
 from threading import Thread, Event, Lock
 import concurrent.futures
@@ -136,7 +136,7 @@ class ChordNode:
        self.as_max = as_max     
 
 class ChordServer:
-    def __init__(self,DHT_name,port,entry_points,id,disable_log,is_the_first = False):
+    def __init__(self,DHT_name,port,entry_points,disable_log,is_the_first = False):
         self.DHT_name = DHT_name
 
         self.disable_realtime_log = disable_log
@@ -145,7 +145,6 @@ class ChordServer:
         self.Ft: list[ChordNode] = [None]*floor(log2(self.max_id + 1))
         self.state_storage = StateStorage()
         self.port = port
-        self.is_the_first = is_the_first
         self.entry_points = entry_points
         self.server : MultiThreadedServer = MultiThreadedServer(self.port,100,100,2,self.create_dispatcher(), log = False)
         self.get_succ_req_cmd = 'get_succ_req'
@@ -179,16 +178,20 @@ class ChordServer:
         for i in range(2,len(self.Ft)):
             self.Ft[i] = self.Ft[1]
 
-    def insert(self):
-        for _ in range(10):
-            ip = self.get_some_node()
-            succ_node = self.ask_succ(ip,self.id_hex,False)
-            response, prev_node = self.ImYPrev(succ_node.ip)
-            if response == 'Busy':
-                sleep(randint(1,5))
-                continue
-            else:
-                break
+    def insert(self,ips):
+        shuffle(ips)
+        for ip in ips:
+            for _ in range(10):
+                try:
+                    succ_node = self.ask_succ(ip,self.id_hex,False)
+                except ConnectionRefusedError:
+                    continue
+                response, prev_node = self.ImYPrev(succ_node.ip)
+                if response == 'Busy':
+                    sleep(randint(1,5))
+                    continue
+                else:
+                    break
         self.ImYSucc(prev_node.ip)
         #TODO si prev_ip esta caido
         self.confirm_new_prev(succ_node.ip)
@@ -200,10 +203,12 @@ class ChordServer:
         server_thread = Thread(target= self.server.start_server)
         server_thread.start()
         # print('started server')
-        if self.is_the_first:
+        ips = self.get_some_node()
+        if len(ips) == 0:
+            self.update_log('is first')
             self.insert_as_first()
         else:
-            self.insert()
+            self.insert(ips)
         # print('started maintain Ft')
         Thread(target=ChordServer.MaintainFt, args=[self], daemon=True).start()
         msg = self.build_insert_response()
@@ -239,8 +244,14 @@ class ChordServer:
     def get_some_node(self):
         entry = choice(self.entry_points)
         self.update_log('starting to send for (get_some_node)')
-        response = self.send_and_close(entry,'get')
-        return response.split(',')[0]
+        msg_dict = {
+            'type': util.CHORD,
+            'proto': util.NEW_LOGGER_REQUEST,
+        }
+        text = json.dumps(msg_dict)
+        response = self.send_and_close(entry,text)
+        resp_dict = util.decode(response)
+        return resp_dict['ip_loggers']
 
     def sleeping_log(self):
         while(True):
@@ -446,7 +457,7 @@ class ChordServer:
         msg = ChordServer.create_msg(self.ImYPrev_cmd,self.id_hex,self.ip,False,0)
         self.update_log('starting to send (ImYPrev)')
         msg = self.send_and_close(succ_ip,msg)
-        arr = msg.split(',')
+        arr = msg.decode().split(',')
         return arr[0], ChordNode(int(arr[1],16),arr[1],arr[2],arr[3] == 'True')
 
     def rec_ImYPrev(self,msg:ParsedMsg,socket_client,addr):
@@ -475,8 +486,12 @@ class ChordServer:
 
     def register_in_entry(self):
         entry_point = choice(self.entry_points)
+        msg_dict = {
+            'type': util.CHORD,
+            'proto': util.INSERTED_LOGGER_REQUEST
+        }
         self.update_log('starting to send (register)')
-        self.send_and_close(entry_point,f'anotate,{self.id_hex}')
+        self.send_and_close(entry_point,json.dumps(msg_dict))
 
 
 
@@ -550,7 +565,7 @@ class ChordServer:
         try:
             s.connect((ip,self.port))
             s.sendall(msg.encode())
-            response = s.recv(port).decode()
+            response = s.recv(port)
             s.close()
         except Exception as e:
             self.update_log(str(e))
@@ -558,13 +573,9 @@ class ChordServer:
         self.update_log('send ended')
         return response
 
-print('is_first?')
-first = input() == 'yes'
 print('disable log?')
 log = input()
-print('id:')
-id_n = input()
-server = ChordServer(DHT_name='Log',port = 15000,entry_points=['entry'],is_the_first= first,id = id_n, disable_log=log)
+server = ChordServer(DHT_name='Log',port = 15000,entry_points=['entry'], disable_log=log)
 server.start()
     
 
