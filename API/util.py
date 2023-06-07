@@ -107,7 +107,7 @@ class Stalker:
     para verificar si est'a vivo a'un, pero dando mas probabilidad a los
     IP menos actualizados.
     '''
-    def __init__(self, type, umbral_alive = 90):
+    def __init__(self, type, umbral_alive = 90, umbral_deads=30):
         '''
         Inicializa la estructura Stalker con el tipo de Server que la aloje.
         Internamente utiliza una lista con tuplas de la forma (tiempo, IP:Port)
@@ -115,7 +115,9 @@ class Stalker:
         self.list = []
         self.type = type
         self.umbral_alive = umbral_alive
+        self.umbral_deads = umbral_deads
         self.alive_dirs = []
+        self.deads_dirs = []
 
     def insert_IP(self, dir):
         '''
@@ -155,18 +157,18 @@ class Stalker:
         _, dir = random.choices(self.list,weights=range(len(self.list), 0, -1),k=1)[0]
         return dir
     
-    def dieds_dirs(self, umbral_time):
+    def refresh_dirs(self):
 
         self.alive_dirs = []
         real_time = time.time()
-        dieds = []
+        self.deads_dirs = []
         for i in range(len(self.list)):
             t, dir = self.list[i]
-            if real_time - t >= umbral_time:
-                dieds.append(dir)
+            if real_time - t >= self.umbral_deads:
+                self.deads_dirs.append(dir)
             if real_time - t <= self.umbral_alive:
                 self.alive_dirs.append(dir)
-        return dieds
+        return self.deads_dirs.copy()
 
     def msg_stalk(self):
         '''

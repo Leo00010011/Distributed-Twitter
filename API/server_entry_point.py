@@ -31,8 +31,8 @@ class EntryPointServerTheaded(MultiThreadedServer):
 
     def __init__(self, port: int, task_max: int, thread_count: int, timeout: int):
         super().__init__(port, task_max, thread_count, timeout, self.switch)
-        self.stalker_loggers = Stalker(LOGGER)
-        self.stalker_entrys = Stalker(ENTRY_POINT)
+        self.stalker_loggers = Stalker(LOGGER,umbral_deads=30, umbral_alive=90)
+        self.stalker_entrys = Stalker(ENTRY_POINT, umbral_deads=30, umbral_alive=90)
         self.verbose = True
         self.execute_pending_tasks = False
         self.stalking_entrys = False
@@ -815,7 +815,7 @@ class EntryPointServerTheaded(MultiThreadedServer):
         self.stalking_entrys = True
         event.wait(rand.randint(20,60))
         while not event.is_set():
-            dirs_to_stalk = self.stalker_entrys.dieds_dirs(100)
+            dirs_to_stalk = self.stalker_entrys.refresh_dirs()
             print('STALKEANDO Entrys: ', dirs_to_stalk)
             for dir in dirs_to_stalk:
                 try:
@@ -840,7 +840,7 @@ class EntryPointServerTheaded(MultiThreadedServer):
         event.wait(rand.randint(20,60))
         while not event.is_set():
             with self.lock:
-                dirs_to_stalk = self.stalker_loggers.dieds_dirs(30)
+                dirs_to_stalk = self.stalker_loggers.refresh_dirs()
             print('STALKEANDO Loggers: ', dirs_to_stalk)
             for dir in dirs_to_stalk:
                 try:
