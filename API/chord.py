@@ -469,7 +469,7 @@ class ChordServer:
         msg = ChordServer.create_msg(self.ImYPrev_cmd ,self.id_hex ,self.ip ,False ,0)
         self.update_log('starting to send (ImYPrev)')
         response = self.send_til_success([succ_ip] ,msg ,'ImYPrev',self.port)
-        arr = response.decode().split(' ,')
+        arr = response.decode().split(',')
         return arr[0] , ChordNode(int(arr[1] ,16) ,arr[1] ,arr[2] ,arr[3] == 'True')
 
     def rec_ImYPrev(self ,msg:ParsedMsg ,socket_client ,addr):
