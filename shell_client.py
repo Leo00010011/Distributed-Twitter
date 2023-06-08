@@ -150,8 +150,10 @@ class ShellClient():
             print('> ', end='')
             password = input()            
             
-            succesed, error = self.client.sign_in(nick, password)
+            succesed, token = self.client.sign_in(nick, password)
             if succesed:
+                self.token = token
+                self.nick = nick
                 print('SESION INICIADA CON EXITO!')
                 print('Pulse ENTER para volver al menu principal')
                 input()
@@ -159,7 +161,7 @@ class ShellClient():
             else:
                 print('Ha ocurrido un ERROR :"(')
                 print('<+++++ Error +++++>')
-                print(error)
+                print(token)
                 print('<+++++|+++++|+++++>')
                 print('Escriba "r" para repetir el proceso o pulse simplemente ENTER para regresar al menu principal')
                 inp = input()

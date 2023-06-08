@@ -10,7 +10,8 @@ def CreateUser(name, alias, password, alias_hash):
     try:
         User.create(name= name, alias=alias, password=password, alias_hash = alias_hash)
         return True
-    except:
+    except Exception as e:
+        print(e)
         return False
 
 def CheckUserAlias(alias):
@@ -31,7 +32,12 @@ def GetTokenLogIn(alias, password):
     en caso de que si y se devuelve este Token
     '''
     try:
+        print("HOLA")
+        print("HOLA")
         user = User.select().where(User.alias == alias).get()
+        print("HOLA")
+        print("HOLA")
+        print(user)
         if  user:
             if user.password == password:
                 return CreateToken(user)

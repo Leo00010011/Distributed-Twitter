@@ -43,10 +43,13 @@ class Client():
                 s.connect((ip, PORT_GENERAL_ENTRY))
                 s.send(send_data)
                 recv_bytes = s.recv(count_bytes_recv)
+                print('bytes recibidos')
                 recv_data = util.decode(recv_bytes)
+                print('decodificada', recv_data)
                 return True, recv_data
             except Exception as e:                
                 print(f'Entry "{ip}" caido')
+                print(e)
                 self.current_index_entry_point_ip = (self.current_index_entry_point_ip+1) % len(self.entry_point_ips)                
                 error = e
             finally:
@@ -154,6 +157,8 @@ class Client():
         }
         
         good, recv_data = self.try_send_recv(msg)
+        print('Respuesta del tweet')
+        print(good, recv_data)
         if not good:
             return False, str(recv_data)
         

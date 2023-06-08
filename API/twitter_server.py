@@ -69,6 +69,9 @@ class TweeterServer(MultiThreadedServer):
             print(e)
             return
         
+        print('Switch del Logger')
+        print(type_rqst, proto_rqst)
+        print(data_dict)
         if type_rqst == CHORD:
             
             if proto_rqst == NEW_LOGGER_REQUEST:
@@ -141,8 +144,8 @@ class TweeterServer(MultiThreadedServer):
 
         if state and state.desired_data:
             #Escribirle al server que tiene al usuario
-            state2 = storage.get_state()
-            data = register_request_msg(nick, data_dict["password"], state2.id)
+            state2 = storage.insert_state()
+            data = register_request_msg(data_dict['name'],nick, data_dict["password"], state2.id)
             send_and_close(random.choice(state.desired_data['IP']), PORT_GENERAL_LOGGER, data)
             state = wait_get_delete(storage, state2)
             
@@ -171,14 +174,16 @@ class TweeterServer(MultiThreadedServer):
         #Hay que usar Chord para ver quien tiene a ese Nick
         nick = data_dict['nick']
         state = do_chord_sequence(storage,nick)
-        
+        print('Llego el CHORD')
+        print(state.desired_data)        
         if state and state.desired_data:
             #Escribirle al server que tiene al usuario
-            state2 = storage.get_state()
+            state2 = storage.insert_state()
             data = login_request_msg(nick, data_dict["password"], state2.id)
-            send_and_close(state.desired_data['IP'],CHORD_PORT, data)
+            send_and_close(state.desired_data['IP'][0],PORT_GENERAL_LOGGER, data)
+            print('Send an Close')
             state = wait_get_delete(storage, state2)
-            
+            print('Wait', state.desired_data)
             if state and state.desired_data:
                 #reenviar mensaje de autenticacion
                 try:
@@ -188,6 +193,7 @@ class TweeterServer(MultiThreadedServer):
 
                 except:
                     pass
+        print('Hubo error')
         data = login_response_msg(False, None, 'Something went wrong in the network connection', data_dict['id_request'])
         send_and_close(addr_client[0], PORT_GENERAL_ENTRY, data)
 
@@ -200,9 +206,9 @@ class TweeterServer(MultiThreadedServer):
         
         if state and state.desired_data:
             #Escribirle al server que tiene al usuario
-            state2 = storage.get_state()
+            state2 = storage.insert_state()
             data = logout_request_msg(nick, data_dict["token"], state2.id)
-            send_and_close(state.desired_data['IP'],CHORD_PORT, data)
+            send_and_close(state.desired_data['IP'][0],CHORD_PORT, data)
             state = wait_get_delete(storage, state2)
             
             if state and state.desired_data:
@@ -228,25 +234,37 @@ class TweeterServer(MultiThreadedServer):
         socket_client.close()
         nick = data_dict['nick']
         data = None
+        print('get_register')
+        print(data_dict)
         if view.CheckUserAlias(nick) is None:
             password = data_dict["password"]
             name = data_dict['name']
             try: 
-                view.CreateUser(name, nick, hashlib.sha256(bytes(password)).hexdigest(), hashlib.sha256(bytes(nick)).hexdigest())
+                print('antes del view')
+                code_pass = hashlib.sha256(password.encode()).hexdigest()
+                code_nick = hashlib.sha256(nick.encode()).hexdigest()
+                print('codificado')
+                view.CreateUser(name, nick, code_pass, code_nick)
+                print('view correcto')
                 data = register_response_msg(True, None, data_dict['id_request'])
-            except:
+                print(data)
+            except Exception as e:
+                print(e)
                 data = register_response_msg(False, 'Error trying to register', data_dict['id_request'])
 
         else:
+            print('Fallo el check')
             data = register_response_msg(False, 'User Nick must be unique', data_dict['id_request'])
 
         send_and_close(addr_client[0], PORT_GENERAL_LOGGER, data) 
 
     def set_data(self, socket_client, addr_client, data_dict, storage):
         socket_client.close()
-        
+        print('Entre a set data')
         Id = data_dict["id_request"]
+        print('Id = ', Id)
         state = storage.get_state(Id)
+        print(data_dict)
    
         state.desired_data = data_dict
         state.hold_event.set()
@@ -264,7 +282,7 @@ class TweeterServer(MultiThreadedServer):
         password = data_dict["password"]
         id_request = data_dict['id_request']
         try:
-            Token = view.LogIn(nick,hashlib.sha256(bytes(password)).hexdigest())
+            Token = view.GetTokenLogIn(nick,hashlib.sha256(password.encode()).hexdigest())
             if Token:
                 data = login_response_msg(True, Token, None, id_request)
                 
@@ -302,32 +320,37 @@ class TweeterServer(MultiThreadedServer):
 
     def tweet_request(self, socket_client, addr_client, data_dict, storage): 
 
+        print('Tweet Request')
         socket_client.close()    
         #pedir un evento para m\'aquina de estado 
         nick = data_dict['nick']
         state = do_chord_sequence(storage, nick)
-        
+        print('Tweet Request CHORD', state)
+        print('Desired', state.desired_data)
+        print('IPs', state.desired_data['IP'])
         if state and state.desired_data:
             #Escribirle al server que tiene al usuario
-            state2 = storage.get_state()
-            
+            state2 = storage.insert_state()
+            print('State2')
             data_dict['type'] = TWEET
             data_dict['id_request'] = state2.id
-            
-            send_and_close(state.desired_data['IP'], PORT_GENERAL_LOGGER, data_dict)
+            print(data_dict['type'])
+            send_and_close(state.desired_data['IP'][0], PORT_GENERAL_LOGGER, data_dict)
             state = wait_get_delete(storage, state2)
             
             if state and state.desired_data:
                 #reenviar mensaje de autenticacion
                 try:
+                    state.desired_data['type'] = LOGGER
                     state.desired_data['id_request'] = data_dict['id_request']
+                    print(state.desired_data)
                     send_and_close(addr_client[0],PORT_GENERAL_ENTRY, state.desired_data)
                     return
                 except:
                     pass
 
         data = {
-                'type':TWEET,
+                'type':LOGGER,
                 'proto': data_dict['proto'] +1,
                 'succesed': False,
                 'error': 'Something went wrong in the network connection',
@@ -384,14 +407,14 @@ class TweeterServer(MultiThreadedServer):
 
                 if state and state.desired_data:
                     #Escribirle al server que tiene al usuario
-                    state2 = storage.get_state()
+                    state2 = storage.insert_state()
                     data = {
                             'type': TWEET,
                             'proto': CHECK_USER_REQUEST,
                             'nick': data_dict['nick_profile'],
                             'id_request':state2.id
                     }
-                    send_and_close(state.desired_data['IP'], PORT_GENERAL_LOGGER, data)
+                    send_and_close(state.desired_data['IP'][0], PORT_GENERAL_LOGGER, data)
                     state = wait_get_delete(storage, state)                   
                     
                     if state and state.desired_data:
@@ -429,7 +452,7 @@ class TweeterServer(MultiThreadedServer):
 
                 if state and state.desired_data:
                     #Escribirle al server que tiene al usuario
-                    state2 = storage.get_state()
+                    state2 = storage.insert_state()
                     data = {
                      'type': TWEET,
                      'proto': GET_TWEET,
@@ -438,7 +461,7 @@ class TweeterServer(MultiThreadedServer):
                      "id_request": state2.id,
                     }
                 
-                    send_and_close(state.desired_data['IP'], PORT_GENERAL_LOGGER, data)
+                    send_and_close(state.desired_data['IP'][0], PORT_GENERAL_LOGGER, data)
                     state = wait_get_delete(storage, state2)
 
                     if state and state.desired_data:
@@ -463,10 +486,12 @@ class TweeterServer(MultiThreadedServer):
 
                 if state and state.desired_data:
                     #Escribirle al server que tiene al usuario
+
                     state2 = storage.get_state()
                     data = profile_request_msg(data_dict['nick_profile'], state2.id)
                     send_and_close(state.desired_data['IP'], PORT_GENERAL_LOGGER, data)
                     state = wait_get_delete(storage, state2)
+
 
                     if state and state.desired_data:
                         data = state.desired_data
@@ -497,11 +522,13 @@ class TweeterServer(MultiThreadedServer):
                 
                 if state and state.desired_data:
                     #Escribirle al server que tiene al usuario
+
                     state2 = storage.get_state()
                     data = check_tweet_request(data_dict['nick_profile'], data_dict['date'], state2.id)
                     send_and_close(state.desired_data['IP'], PORT_GENERAL_LOGGER, data)
                     state = wait_get_delete(storage, state2)
                 
+
                     data = {
                             'type': TWEET,
                             'proto': RETWEET_RESPONSE,
@@ -544,10 +571,12 @@ class TweeterServer(MultiThreadedServer):
                 
                 if state and state.desired_data:
                     #Escribirle al server que tiene al usuario
+
                     state2 = storage.get_state()
                     data = recent_published_request_msg(f.followed, state2.id)
                     send_and_close(state.desired_data['IP'], PORT_GENERAL_LOGGER, data)
                     state = wait_get_delete(storage, state2)
+
 
                     if state and state.desired_data and state.desired_data["successed"]: 
                         feed_data.append((state.desired_data["date"], state.desired_data["text"], state.desired_data["nick"], state.desired_data.get('nick2', None), state.desired_data.get('date_tweet', None)))
@@ -556,8 +585,10 @@ class TweeterServer(MultiThreadedServer):
             send_and_close(addr_client[0], PORT_GENERAL_LOGGER, data)
             return
         
+
         data = feed_response_msg(False, 'User not logged', id_request, [])
         send_and_close(addr_client[0], PORT_GENERAL_LOGGER, data)
+
                       
     def tweet_check(self, socket_client, addr_client, data_dict,storage):
         
@@ -596,6 +627,7 @@ class TweeterServer(MultiThreadedServer):
             
             if state and state.desired_data:
                     #Escribirle al server que tiene al usuario
+
                     state2 = storage.get_state()
                     data = check_tweet_request_msg(retweet.nick, retweet.date_tweet, state2.id)
                     send_and_close(addr_client[0], PORT_GENERAL_LOGGER, data)
@@ -606,6 +638,7 @@ class TweeterServer(MultiThreadedServer):
                         data_publish['retweet'] = {
                             "date_retweet": retweet.date_retweet,
                             'date_tweet': retweet.date_tweet
+
                             'text': state.desired_data["text"],
                             'nick2': retweet.nick
                             } 
@@ -624,7 +657,8 @@ class TweeterServer(MultiThreadedServer):
         socket_client.close()
         if self.chord_id: 
             return
-        suc = data_dict.get('successor', None)
+        print(data_dict)
+        suc = data_dict.get('succesor', None)
         sib = data_dict('siblings',None)
         
         self.say_hello(sib)
@@ -652,7 +686,7 @@ class TweeterServer(MultiThreadedServer):
 
                     skt.send(util.encode(data))
 
-                    recv_bytes = skt.recv(4026)
+                    recv_bytes = skt.recv(15000)
                     data_dict = util.decode(recv_bytes)
                     self.CopyData(data_dict)
 

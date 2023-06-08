@@ -3,7 +3,13 @@ import hashlib
 import datetime
 from peewee import Model, SqliteDatabase, CharField, DateField, IntegerField, ForeignKeyField, DateTimeField
 
-main_db = SqliteDatabase('social_network.db')
+try:
+    main_db = SqliteDatabase('/home/social_network.db')
+    main_db.connect()
+    main_db.close()
+except:
+    pass
+
 
 # Modelo de Base de Datos
 
@@ -50,7 +56,7 @@ class Token(Model):
 
 
 # Ejecutar solo una primera vez para crear las tablas, luego comentar
-# main_db.create_tables([User, Follow, Tweet, ReTweet, Token])
+main_db.create_tables([User, Follow, Tweet, ReTweet, Token])
 
 
 

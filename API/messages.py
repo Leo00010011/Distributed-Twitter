@@ -1,10 +1,24 @@
-from util import *
+try:
+    from util import *
+    import util
+except:
+    from API.util import *
+    import API.util as util
+
+import socket
+from socket import AF_INET, SOCK_STREAM
 
 def send_and_close(ip, port, data):
+    print('send and close')
+    print(ip, port, data)
     skt = socket.socket(AF_INET,SOCK_STREAM)
+    print('socket')
     skt.connect((ip,port))
+    print('connect')
     skt.send(util.encode(data))
+    print('send')
     skt.close()
+    print('close')
 
 def only_send(ip, port, data):
     skt = socket.socket(AF_INET,SOCK_STREAM)
@@ -26,7 +40,7 @@ def do_chord_sequence(storage, nick):
         send_and_close('127.0.0.1', CHORD_PORT, data)
         return wait_get_delete(storage, state) 
 
-def login_request_msg(nick,password,id_reqiuest):
+def login_request_msg(nick,password,id_request):
     data = {
             "type": LOGGER,
             "proto": LOGIN_REQUEST,
@@ -56,10 +70,11 @@ def chord_request_msg(nick, id_request):
         }
     return data
 
-def register_request_msg(nick, password, id_request):
+def register_request_msg(name,nick, password, id_request):
     data = {
                 "type": LOGGER,
                 "proto": REGISTER_REQUEST,
+                "name": name,
                 "nick":nick ,
                 "password":password ,
                 "id_request":id_request ,
@@ -76,69 +91,60 @@ def register_response_msg(succesed, error, id_request):
            }
     return data
 
-def create_tweet_response_msg(success, error, id_request):
+def create_tweet_response_msg(succesed, error, id_request):
     data = {
             'type': TWEET,
             'proto': CREATE_TWEET_RESPONSE,
-            'success':success ,
+            'succesed':succesed ,
             'error':error,
             'id_request':id_request 
         }
     return data
 
-def retweet_response_msg(success, error, id_request):
+def retweet_response_msg(succesed, error, id_request):
     data = {
             'type': TWEET,
             'proto': RETWEET_RESPONSE,
-            'success':success ,
+            'succesed':succesed ,
             'error':error,
             'id_request':id_request 
         }
     return data
 
-def follow_response_msg(success, error, id_request):
+def follow_response_msg(succesed, error, id_request):
     data = {
             'type': TWEET,
             'proto': FOLLOW_RESPONSE,
-            'success':success ,
+            'succesed':succesed ,
             'error':error,
             'id_request':id_request 
         }
     return data
 
-def feed_response_msg(success, error, id_request, data):
+def feed_response_msg(succesed, error, id_request, data):
     msg = {
             'type': TWEET,
             'proto': FEED_RESPONSE,
-            'successed':successed ,
+            'succesed':succesed ,
             'error':error ,
             "id_request":id_request ,
             'data':data
         }
     return msg
 
-def profile_response_msg(success, error, id_request, data_profile):
+def profile_response_msg(succesed, error, id_request, data_profile):
     data = {
             'type': TWEET,
             'proto': PROFILE_RESPONSE,
-            'success':success ,
+            'succesed':succesed ,
             'error':error,
             'data_profile': data_profile,
             'id_request':id_request 
         }
     return data
 
-def profile_request_msg(nick, id_request):
-    
-    data = {
-            'type': TWEET,
-            'proto': PROFILE_REQUEST,
-            'nick': nick,
-            "id_request":id_request,
-            }
-    return data
 
-def logout_request_msg(nick,token,id_reqiuest):
+def logout_request_msg(nick,token,id_request):
     data = {
             "type": LOGGER,
             "proto": LOGOUT_REQUEST,
@@ -148,11 +154,11 @@ def logout_request_msg(nick,token,id_reqiuest):
         }
     return data
 
-def logout_response_msg(success, error, id_request):
+def logout_response_msg(succesed, error, id_request):
     data = {
             'type':LOGGER,
             'proto': LOGOUT_RESPONSE,
-            'success':success ,
+            'succesed':succesed ,
             'error':error,
             'id_request':id_request 
         }
@@ -162,18 +168,18 @@ def recent_published_request_msg(nick, id_request):
     
     data = {
         'type': TWEET,
-        'proto': RECENT_PUBLICHED_REQUEST,
+        'proto': RECENT_PUBLISHED_REQUEST,
         'nick': nick,
         "id_request": id_request,
     }
 
     return data
 
-def recent_published_response_msg(success, error, id_request, data):
+def recent_published_response_msg(succesed, error, id_request, data):
     msg = {
             'type': TWEET,
             'proto': RECENT_PUBLISHED_RESPONSE,
-            'successed':successed,
+            'succesed':succesed,
             'error':error,
             "id_request":id_request,
             'data':data

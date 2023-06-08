@@ -157,7 +157,7 @@ class ChordServer:
                 self.entry_points.append(str(ip))
         shuffle(self.entry_points)        
 
-        self.server : MultiThreadedServer = MultiThreadedServer(self.port,100,100,2,self.create_dispatcher(), log = False)
+        self.server : MultiThreadedServer = MultiThreadedServer(self.port,10,10,2,self.create_dispatcher(), log = False)
         self.get_succ_req_cmd = 'get_succ_req'
         self.get_succ_resp_cmd = 'get_succ_resp'
         self.ImYSucc_cmd = 'ImYSucc_cmd'
@@ -224,10 +224,10 @@ class ChordServer:
         Thread(target=ChordServer.MaintainFt, args=[self], daemon=True).start()
         msg = self.build_insert_response()
         # print('builded msg')
-        # self.send_and_close('127.0.0.1',msg,util.PORT_GENERAL_LOGGER)
+        self.send_and_close('127.0.0.1',msg,util.PORT_GENERAL_LOGGER)
         self.register_in_entry()
         self.update_log(f'inserted')
-        Thread(target= ChordServer.sleeping_log, args=[self],daemon = True).start()
+        #Thread(target= ChordServer.sleeping_log, args=[self],daemon = True).start()
         server_thread.join()
 
 
@@ -235,6 +235,7 @@ class ChordServer:
         def dispatcher(id:int,task: tuple[socket,object],event:Event,storage):
             # print('inside dispatcher')
             (socket_client, addr_client) = task
+            parsed_msg = None
             try:                
                 msg = socket_client.recv(15000)
             # if(msg == 'end'):
@@ -262,7 +263,6 @@ class ChordServer:
         text = json.dumps(msg_dict)
         response = self.send_and_close(entry,text,port=util.PORT_GENERAL_ENTRY)
         resp_dict = util.decode(response)
-        print(resp_dict)
         return resp_dict['ip_loggers']
 
     def sleeping_log(self):
@@ -405,6 +405,7 @@ class ChordServer:
         
     
     def rec_outside_get(self,msg:ParsedMsg,socket_client,addr):
+        socket_client.close()
         self.update_log(f'start rec outside_get {msg.id_hex}')
         # {type:'logger', proto:'chord'}]   
         holder : ThreadHolder= self.state_storage.insert_state()
@@ -412,6 +413,7 @@ class ChordServer:
         self.update_log(f'me:{str(me)}')
         if not me:
             self.update_log('starting to wait')
+            print('starting to wait')
             holder.hold_event.wait()
         else:
             holder.desired_data = ChordNode(self.id,self.id_hex,self.ip,False)
@@ -424,11 +426,14 @@ class ChordServer:
             'type': util.LOGGER,
             'proto': util.CHORD_RESPONSE,
             'IP':[holder.desired_data.ip],
-            'id_req':msg.req_id
+            'id_request':msg.req_id
         }
+        socket_client = socket(AF_INET, SOCK_STREAM)
+        socket_client.connect((addr[0], util.PORT_GENERAL_LOGGER))
         socket_client.send(util.encode(msg_dict))
         socket_client.close()
         self.update_log(f'end outside req')
+        print(f'end outside req')
 
     def rec_get_succ_req(self,msg:ParsedMsg,socket_client,addr):
         socket_client.send('Ok'.encode())
@@ -554,11 +559,11 @@ class ChordServer:
         # print('dict parsed')
         result = None
         if msg_dict['type'] == util.LOGGER:
-            # print('is logger request')
-            nick_hash = hashlib.sha256(msg_dict['hash'].encode()).hexdigest()
-            result = ParsedMsg(self.outside_cmd,nick_hash,'0','False',msg_dict['id_req'])
+            print('is logger request')
+            nick_hash = hashlib.sha256(msg_dict['hash'].encode()).hexdigest()            
+            result = ParsedMsg(self.outside_cmd,nick_hash,'0','False',msg_dict['id_request'])
         else:
-            # print('is intern request')
+            print('is intern request')
             arr = msg_dict['content'].split(',')
             result = ParsedMsg(arr[0], arr[1], arr[2], arr[3],arr[4])
         # print('parsed')
