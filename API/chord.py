@@ -226,7 +226,7 @@ class ChordServer:
         Thread(target=ChordServer.MaintainFt , args=[self] , daemon=True).start()
         msg = self.build_insert_response()
         # print('builded msg')
-        self.send_and_close('127.0.0.1',msg,util.PORT_GENERAL_LOGGER)
+        self.send_and_close(['127.0.0.1'],msg,util.PORT_GENERAL_LOGGER)
         self.register_in_entry()
         self.update_log(f'inserted')
         server_thread.join()
@@ -274,7 +274,7 @@ class ChordServer:
             print(f'log of node_{self.id_hex} at {str(datetime.datetime.now().time())}')
             if(not(self.disable_realtime_log == 'yes')):
                 if(self.disable_realtime_log == 'file'):
-                    with open(f'node_{self.id_hex}.log' ,'a') as f:
+                    with open(f'node_{self.id_hex}.log','a') as f:
                         f.write('\n'.join([f'{time_str}- {entry}' for entry , time_str in self.log]))
                     self.log = [] 
                 else:
@@ -558,10 +558,10 @@ class ChordServer:
         if msg_dict['type'] == util.LOGGER:
             # print('is logger request')
             nick_hash = hashlib.sha256(msg_dict['hash'].encode()).hexdigest()
-            result = ParsedMsg(self.outside_cmd ,nick_hash ,'0' ,'False' ,msg_dict['id_req'])
+            result = ParsedMsg(self.outside_cmd ,nick_hash ,'0','False' ,msg_dict['id_req'])
         else:
             # print('is intern request')
-            arr = msg_dict['content'].split(' ,')
+            arr = msg_dict['content'].split(',')
             result = ParsedMsg(arr[0] , arr[1] , arr[2] , arr[3] ,arr[4])
         # print('parsed')
         return result
@@ -570,7 +570,7 @@ class ChordServer:
     def create_msg(cmd:str ,k:int , owner_ip:str , as_max:bool , req_id:int):
         msg = {
             'type': util.CHORD_INTERNAL ,
-            'content': ' ,'.join([str(cmd) ,str(k) ,str(owner_ip) ,str(as_max) ,str(req_id) ,])
+            'content': ','.join([str(cmd) ,str(k) ,str(owner_ip) ,str(as_max) ,str(req_id) ,])
         }
         return json.dumps(msg)
 
