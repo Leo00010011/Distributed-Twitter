@@ -1,10 +1,24 @@
-from util import *
+try:
+    from util import *
+    import util
+except:
+    from API.util import *
+    import API.util as util
+
+import socket
+from socket import AF_INET, SOCK_STREAM
 
 def send_and_close(ip, port, data):
+    print('send and close')
+    print(ip, port, data)
     skt = socket.socket(AF_INET,SOCK_STREAM)
+    print('socket')
     skt.connect((ip,port))
+    print('connect')
     skt.send(util.encode(data))
+    print('send')
     skt.close()
+    print('close')
 
 def only_send(ip, port, data):
     skt = socket.socket(AF_INET,SOCK_STREAM)
@@ -26,7 +40,7 @@ def do_chord_sequence(storage, nick):
         send_and_close('127.0.0.1', CHORD_PORT, data)
         return wait_get_delete(storage, state) 
 
-def login_request_msg(nick,password,id_reqiuest):
+def login_request_msg(nick,password,id_request):
     data = {
             "type": LOGGER,
             "proto": LOGIN_REQUEST,
@@ -106,7 +120,7 @@ def follow_response_msg(success, error, id_request):
         }
     return data
 
-def feed_response_msg(success, error, id_request, data):
+def feed_response_msg(successed, error, id_request, data):
     msg = {
             'type': TWEET,
             'proto': FEED_RESPONSE,
@@ -128,7 +142,7 @@ def profile_response_msg(success, error, id_request, data_profile):
         }
     return data
 
-def logout_request_msg(nick,token,id_reqiuest):
+def logout_request_msg(nick,token,id_request):
     data = {
             "type": LOGGER,
             "proto": LOGOUT_REQUEST,
@@ -152,14 +166,14 @@ def recent_published_request_msg(nick, id_request):
     
     data = {
         'type': TWEET,
-        'proto': RECENT_PUBLICHED_REQUEST,
+        'proto': RECENT_PUBLISHED_REQUEST,
         'nick': nick,
         "id_request": id_request,
     }
 
     return data
 
-def recent_published_response_msg(success, error, id_request, data):
+def recent_published_response_msg(successed, error, id_request, data):
     msg = {
             'type': TWEET,
             'proto': RECENT_PUBLISHED_RESPONSE,

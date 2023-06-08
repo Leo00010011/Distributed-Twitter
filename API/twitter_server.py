@@ -69,6 +69,9 @@ class TweeterServer(MultiThreadedServer):
             print(e)
             return
         
+        print('Switch del Logger')
+        print(type_rqst, proto_rqst)
+        print(data_dict)
         if type_rqst == CHORD:
             
             if proto_rqst == NEW_LOGGER_REQUEST:
@@ -141,7 +144,7 @@ class TweeterServer(MultiThreadedServer):
 
         if state and state.desired_data:
             #Escribirle al server que tiene al usuario
-            state2 = storage.get_state()
+            state2 = storage.insert_state()
             data = register_request_msg(nick, data_dict["password"], state2.id)
             send_and_close(random.choice(state.desired_data['IP']), PORT_GENERAL_LOGGER, data)
             state = wait_get_delete(storage, state2)
@@ -171,14 +174,16 @@ class TweeterServer(MultiThreadedServer):
         #Hay que usar Chord para ver quien tiene a ese Nick
         nick = data_dict['nick']
         state = do_chord_sequence(storage,nick)
-        
+        print('Llego el CHORD')
+        print(state.desired_data)        
         if state and state.desired_data:
             #Escribirle al server que tiene al usuario
-            state2 = storage.get_state()
+            state2 = storage.insert_state()
             data = login_request_msg(nick, data_dict["password"], state2.id)
-            send_and_close(state.desired_data['IP'],CHORD_PORT, data)
+            send_and_close(state.desired_data['IP'][0],PORT_GENERAL_LOGGER, data)
+            print('Send an Close')
             state = wait_get_delete(storage, state2)
-            
+            print('Wait', state.desired_data)
             if state and state.desired_data:
                 #reenviar mensaje de autenticacion
                 try:
@@ -188,6 +193,7 @@ class TweeterServer(MultiThreadedServer):
 
                 except:
                     pass
+        print('Hubo error')
         data = login_response_msg(False, None, 'Something went wrong in the network connection', data_dict['id_request'])
         send_and_close(addr_client[0], PORT_GENERAL_ENTRY, data)
 
@@ -200,7 +206,7 @@ class TweeterServer(MultiThreadedServer):
         
         if state and state.desired_data:
             #Escribirle al server que tiene al usuario
-            state2 = storage.get_state()
+            state2 = storage.insert_state()
             data = logout_request_msg(nick, data_dict["token"], state2.id)
             send_and_close(state.desired_data['IP'],CHORD_PORT, data)
             state = wait_get_delete(storage, state2)
@@ -244,9 +250,11 @@ class TweeterServer(MultiThreadedServer):
 
     def set_data(self, socket_client, addr_client, data_dict, storage):
         socket_client.close()
-        
+        print('Entre a set data')
         Id = data_dict["id_request"]
+        print('Id = ', Id)
         state = storage.get_state(Id)
+        print(data_dict)
    
         state.desired_data = data_dict
         state.hold_event.set()
@@ -309,7 +317,7 @@ class TweeterServer(MultiThreadedServer):
         
         if state and state.desired_data:
             #Escribirle al server que tiene al usuario
-            state2 = storage.get_state()
+            state2 = storage.insert_state()
             
             data_dict['type'] = TWEET
             data_dict['id_request'] = state2.id
@@ -383,7 +391,7 @@ class TweeterServer(MultiThreadedServer):
 
                 if state and state.desired_data:
                     #Escribirle al server que tiene al usuario
-                    state2 = storage.get_state()
+                    state2 = storage.insert_state()
                     data = {
                             'type': TWEET,
                             'proto': CHECK_USER_REQUEST,
@@ -428,7 +436,7 @@ class TweeterServer(MultiThreadedServer):
 
                 if state and state.desired_data:
                     #Escribirle al server que tiene al usuario
-                    state2 = storage.get_state()
+                    state2 = storage.insert_state()
                     data = {
                      'type': TWEET,
                      'proto': GET_TWEET,
@@ -461,7 +469,7 @@ class TweeterServer(MultiThreadedServer):
 
                 if w:
                     #Escribirle al server que tiene al usuario
-                    state2 = storage.get_state()
+                    state2 = storage.insert_state()
                     data = {
                             'type': TWEET,
                             'proto': PROFILE_GET,
@@ -531,7 +539,7 @@ class TweeterServer(MultiThreadedServer):
 
                 if w:
                     #Escribirle al server que tiene al usuario
-                    state2 = storage.get_state()
+                    state2 = storage.insert_state()
                     data = {
                             'type': TWEET,
                             'proto': CHECK_TWEET_REQUEST,
@@ -618,7 +626,7 @@ class TweeterServer(MultiThreadedServer):
 
                 if w:
                     #Escribirle al server que tiene al usuario
-                    state2 = storage.get_state()
+                    state2 = storage.insert_state()
                     data = {
                         'type': TWEET,
                         'proto': RECENT_PUBLISHED_REQUEST,
@@ -705,7 +713,7 @@ class TweeterServer(MultiThreadedServer):
 
             if w:
                     #Escribirle al server que tiene al usuario
-                    state2 = storage.get_state()
+                    state2 = storage.insert_state()
                     data = {
                         'type': TWEET,
                         'proto': CHECK_TWEET_REQUEST,
@@ -767,6 +775,7 @@ class TweeterServer(MultiThreadedServer):
         socket_client.close()
         if self.chord_id: 
             return
+        print(data_dict)
         suc = data_dict.get('successor', None)
         sib = data_dict('siblings',None)
         
@@ -795,7 +804,7 @@ class TweeterServer(MultiThreadedServer):
 
                     skt.send(util.encode(data))
 
-                    recv_bytes = skt.recv(4026)
+                    recv_bytes = skt.recv(15000)
                     data_dict = util.decode(recv_bytes)
                     self.CopyData(data_dict)
 
