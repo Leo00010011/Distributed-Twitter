@@ -82,8 +82,6 @@ class TweeterServer(MultiThreadedServer):
             if proto_rqst == NEW_LOGGER_REQUEST:
                 self.new_logger_response(socket_client, addr_client, data_dict,storage)
             
-            
-
         if type_rqst == ENTRY_POINT:
             
             if proto_rqst == LOGIN_REQUEST:
@@ -927,47 +925,48 @@ class TweeterServer(MultiThreadedServer):
             table = None
 
             while True:
-                if data_dict['over'] and not data_dict['table']: break
-                    # if data_dict['type_node']: break
-                    # view.DeleteTweetRange(hash_limit)            
-                    # view.DeleteRetweetRange(hash_limit)
-                    # view.DeleteFollowRange(hash_limit)
-                    # view.DeleteTokenRange(hash_limit)
-                    # view.DeleteUserPaswordRange(hash_limit)
-     
-                block = data_dict['block']
-                data = transference_response_msg(block+1,data_dict['table'], [], False)
+                try:
+                    if data_dict['over'] and not data_dict['table']: break
+                        # if data_dict['type_node']: break
+                        # view.DeleteTweetRange(hash_limit)            
+                        # view.DeleteRetweetRange(hash_limit)
+                        # view.DeleteFollowRange(hash_limit)
+                        # view.DeleteTokenRange(hash_limit)
+                        # view.DeleteUserPaswordRange(hash_limit)
+
+                    block = data_dict['block']
+                    data = transference_response_msg(block+1,data_dict['table'], [], False)
 
 
-                if not table == data_dict['table']:    
-                    table = data_dict['table']
-        
-                    if table == TWEET_TABLE:
-                        table_data = view.GetTweetRange(hash_limit)
-                        for t in table_data:
-                            t['data'] = str(t['data'])
-                    if table == RETWEET_TABLE:
-                        table_data = view.GetRetweetRange(hash_limit)
-                        for t in table_data:
-                            t['data_tweet'] = str(t['data_tweet'])
-                            t['data_retweet'] = str(t['data_retweet'])
-                    if table == FOLLOW_TABLE:
-                        table_data = view.GetFollowRange(hash_limit) 
-                    if table == TOKEN_TABLE:
-                        table_data = view.GetTokenRange(hash_limit) 
-                    if table == USER_TABLE:
-                        table_data = view.GetUserPaswordRange(hash_limit)
-                
-                start = block* 20
-                end = min(block*20 + 20, len(table_data))
-                
-                data['data'] = table_data[block:end]
-                if end >= len(table_data): data['over'] = True
-                socket_client.sendall(util.encode(data))
+                    if not table == data_dict['table']:    
+                        table = data_dict['table']
 
-                recv_bytes = socket_client.recv(4026)
-                data_dict = util.decode(recv_bytes)
+                        if table == TWEET_TABLE:
+                            table_data = view.GetTweetRange(hash_limit)
+                            for t in table_data:
+                                t['data'] = str(t['data'])
+                        if table == RETWEET_TABLE:
+                            table_data = view.GetRetweetRange(hash_limit)
+                            for t in table_data:
+                                t['data_tweet'] = str(t['data_tweet'])
+                                t['data_retweet'] = str(t['data_retweet'])
+                        if table == FOLLOW_TABLE:
+                            table_data = view.GetFollowRange(hash_limit) 
+                        if table == TOKEN_TABLE:
+                            table_data = view.GetTokenRange(hash_limit) 
+                        if table == USER_TABLE:
+                            table_data = view.GetUserPaswordRange(hash_limit)
 
+                    start = block* 20
+                    end = min(block*20 + 20, len(table_data))
+
+                    data['data'] = table_data[block:end]
+                    if end >= len(table_data): data['over'] = True
+                    socket_client.sendall(util.encode(data))
+
+                    recv_bytes = socket_client.recv(4026)
+                    data_dict = util.decode(recv_bytes)
+                except: pass
             socket_client.close()
 
 
@@ -981,16 +980,18 @@ class TweeterServer(MultiThreadedServer):
         }
         
         for s in siblings:
-            skt = socket.socket(AF_INET,PORT_GENERAL_LOGGER)
-            skt.connect((s, CHORD_PORT))
-            skt.send(util.encose(data))
-            
-            data_x = skt.recv(1024)
-            data_x = util.decode(data_x)
-            if self.primary == []:
-                self.primary = data_x['primary']
 
-            skt.close()
+            try:
+                skt = socket.socket(AF_INET,PORT_GENERAL_LOGGER)
+                skt.connect((s, CHORD_PORT))
+                skt.send(util.encose(data))
+
+                data_x = skt.recv(1024)
+                data_x = util.decode(data_x)
+                if self.primary == []:
+                    self.primary = data_x['primary']
+                skt.close()
+            except: pass
 
         if len(siblings) < 5:
             self.primary.append(self.my_ip)
