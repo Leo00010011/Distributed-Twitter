@@ -157,6 +157,8 @@ class Client():
         }
         
         good, recv_data = self.try_send_recv(msg)
+        print('Respuesta del tweet')
+        print(good, recv_data)
         if not good:
             return False, str(recv_data)
         

@@ -263,7 +263,6 @@ class ChordServer:
         text = json.dumps(msg_dict)
         response = self.send_and_close(entry,text,port=util.PORT_GENERAL_ENTRY)
         resp_dict = util.decode(response)
-        print(resp_dict)
         return resp_dict['ip_loggers']
 
     def sleeping_log(self):
@@ -407,13 +406,11 @@ class ChordServer:
     
     def rec_outside_get(self,msg:ParsedMsg,socket_client,addr):
         socket_client.close()
-        print(f'start rec outside_get {msg.id_hex}')
         self.update_log(f'start rec outside_get {msg.id_hex}')
         # {type:'logger', proto:'chord'}]   
         holder : ThreadHolder= self.state_storage.insert_state()
         me = self.succ(msg.id,self.ip,False,holder.id)
         self.update_log(f'me:{str(me)}')
-        print(f'me:{str(me)}')
         if not me:
             self.update_log('starting to wait')
             print('starting to wait')
@@ -422,22 +419,17 @@ class ChordServer:
             holder.desired_data = ChordNode(self.id,self.id_hex,self.ip,False)
         self.state_storage.delete_state(holder.id)
         self.update_log('responding to outside')
-        print('responding to outside')
         # type: LOGGER
         # proto: CHORD_RESPONSE
         # IP: [Replicas del sucesor]
-        print(holder.desired_data.ip)
         msg_dict = {
             'type': util.LOGGER,
             'proto': util.CHORD_RESPONSE,
             'IP':[holder.desired_data.ip],
             'id_request':msg.req_id
         }
-        print(msg_dict)
         socket_client = socket(AF_INET, SOCK_STREAM)
-        print(addr, util.PORT_GENERAL_LOGGER)
         socket_client.connect((addr[0], util.PORT_GENERAL_LOGGER))
-        print('conectado')
         socket_client.send(util.encode(msg_dict))
         socket_client.close()
         self.update_log(f'end outside req')
@@ -568,10 +560,8 @@ class ChordServer:
         result = None
         if msg_dict['type'] == util.LOGGER:
             print('is logger request')
-            nick_hash = hashlib.sha256(msg_dict['hash'].encode()).hexdigest()
-            print('hash', nick_hash)
+            nick_hash = hashlib.sha256(msg_dict['hash'].encode()).hexdigest()            
             result = ParsedMsg(self.outside_cmd,nick_hash,'0','False',msg_dict['id_request'])
-            print('result', result)
         else:
             print('is intern request')
             arr = msg_dict['content'].split(',')

@@ -446,7 +446,7 @@ class EntryPointServerTheaded(MultiThreadedServer):
             'id_request': state.id
         }
 
-        good, error = self.try_send_logger(message)
+        good, error = self.try_send_logger(message)    
         if not good: 
             msg = {
                 'type': ENTRY_POINT,
@@ -496,6 +496,9 @@ class EntryPointServerTheaded(MultiThreadedServer):
 
     def create_tweet_response_from_logger(self, id:int,task: tuple[socket.socket,object],event:Event, storage, data: dict):
 
+        print('Respuesta del tweet en el Entry')
+        print(good)
+        print(error)
         with self.lock:
             self.stalker_loggers.update_IP(task[1][0])
         state = storage.get_state(data['id_request'])
