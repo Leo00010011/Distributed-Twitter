@@ -233,3 +233,26 @@ def check_user_profile_response_msg(succesed, error, id_request):
             "id_request":id_request,
     }
     return data
+
+def transference_response_msg(block, table, data, over):
+    
+    data = {
+                'type': LOGGER,
+                'proto': TRANSFERENCE_RESPONSE,
+                'block': block,
+                'table': table,
+                'data': data,
+                'over': over 
+            }
+    
+    return data
+
+def transference_request_msg(chord_id, table, over, block):
+    data = {
+            'type': LOGGER,
+            'proto': TRANSFERENCE_REQUEST,
+            'chord_id':chord_id,
+            'table': table,
+            'over': over,
+            'block': block
+        }

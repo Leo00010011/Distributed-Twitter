@@ -24,11 +24,11 @@ except:
 NEW_NODE = 0
 REPLIC_NODE = 1
 
-USER_TABLE = 0
-TOKEN_TABLE = 1
-TWEET_TABLE = 2
-RETWEET_TABLE = 3
-FOLLOW_TABLE = 4
+USER_TABLE = 1
+TOKEN_TABLE = 2
+TWEET_TABLE = 3
+RETWEET_TABLE = 4
+FOLLOW_TABLE = 5
 class TweeterServer(MultiThreadedServer):
     
     def __init__(self,port: int, task_max: int, thread_count: int, timout: int):
@@ -790,14 +790,7 @@ class TweeterServer(MultiThreadedServer):
         type_node, ips = REPLIC_NODE, self.primary if sib else NEW_NODE, suc
         
         ips = random.shufle(ips)
-        data = {
-            'type': LOGGER,
-            'proto': TRANSFERENCE_REQUEST,
-            'chord_id': self.chord_id,
-            'table': USER_TABLE,
-            'over': False,
-            'block': 0
-        }
+        data = transference_request_msq(self.chord_id, USER_TABLE, False, 0)
         
         for s in ips:
             if s == self.my_if: continue
@@ -815,26 +808,12 @@ class TweeterServer(MultiThreadedServer):
 
                     if data_dict['over']:
                         if data_dict['table'] == FOLLOW_TABLE:
-                            data = {
-                                'type': LOGGER,
-                                'proto': TRANSFERENCE_OVER,
-                                'chord_id': self.chord_id,
-                                'over': True,
-                                'type_node': type_node
-                            }
-
+                            data = transference_request_msg(self.chord_id,0, True,None)
                             skt.send(util.encode(data))
                             skt.close()
                             return
 
-                        data = {
-                            'type': LOGGER,
-                            'proto': TRANSFERENCE_REQUEST,
-                            'chord_id': self.chord_id,
-                            'table': data_dict['table'] + 1,
-                            'over': False,
-                            'block': 0 
-                        }
+                        data = transference_request_msg(self.chord_id, data_dict['table'] + 1, False, 0)
                     else:
                         data['block'] = data['block'] + 1 
             except:
@@ -846,34 +825,34 @@ class TweeterServer(MultiThreadedServer):
 
         for data in data_dict['data']:
             if table == TWEET_TABLE:
-                user = data["nick"]
+                user = data["alias"]
                 text = data['text']
                 date = data["date"]
-                view.CreateTweet(text,user,date)
+                view.CreateTweet(text,user,date, self.my_id)
 
             if table == RETWEET_TABLE:
-                user = data["nick"]
+                user = data["alias"]
                 date_tweet = data['date_tweet']
                 date_retweet = data['date_retweet']
-                nick = data["nick2"]
-                view.CreateReTweet(user,nick, date_tweet,date_retweet)
+                nick = data["nick"]
+                view.CreateReTweet(user,nick, date_tweet,date_retweet, self.my_id)
 
             if table == FOLLOW_TABLE:
-                follower = data["follower"]
+                follower = data["alias"]
                 followed = data['followed']
-                view.CreateFollow(follower,followed)
+                view.CreateFollow(follower,followed, self.my_id)
             
             if table == TOKEN_TABLE:
-                nick = data["nick"]
+                nick = data["alias"]
                 token = data['token']
-                view.CreateTokenForced(nick, token)
+                view.CreateTokenForced(nick, token, self.my_id)
 
             
             if table == USER_TABLE:
                 name = data["name"]
                 password = data['password']
                 nick = data["nick"]
-                view.CreateUser(name, nick, password, hashlib.sha1(bytes(nick)).hexdigest())
+                view.CreateUser(name, nick, password, hashlib.sha256(bytes(nick)).hexdigest(), self.my_id)
 
     def data_transfer(self, socket_client, addr_client, data_dict, storage):
             """
@@ -885,31 +864,30 @@ class TweeterServer(MultiThreadedServer):
             table = None
 
             while True:
-                if data_dict['over']:
-                    if data_dict['type_node']: break
-                    view.DeleteTweetRange(hash_limit)            
-                    view.DeleteRetweetRange(hash_limit)
-                    view.DeleteFollowRange(hash_limit)
-                    view.DeleteTokenRange(hash_limit)
-                    view.DeleteUserPaswordRange(hash_limit)
+                if data_dict['over'] and not data_dict['table']: break
+                    # if data_dict['type_node']: break
+                    # view.DeleteTweetRange(hash_limit)            
+                    # view.DeleteRetweetRange(hash_limit)
+                    # view.DeleteFollowRange(hash_limit)
+                    # view.DeleteTokenRange(hash_limit)
+                    # view.DeleteUserPaswordRange(hash_limit)
      
                 block = data_dict['block']
-                data = {
-                        'type': LOGGER,
-                        'proto': TRANSFERENCE_RESPONSE,
-                        'block': block + 1,
-                        'table': data_dict['table'],
-                        'data': [],
-                        'over': False
-                    }
+                data = transference_response_msg(block+1,data_dict['table'], [], False)
+
 
                 if not table == data_dict['table']:    
                     table = data_dict['table']
         
                     if table == TWEET_TABLE:
-                        table_data = view.GetTweetRange(hash_limit) 
+                        table_data = view.GetTweetRange(hash_limit)
+                        for t in table_data:
+                            t['data'] = str(t['data'])
                     if table == RETWEET_TABLE:
-                        table_data = view.GetRetweetRange(hash_limit) 
+                        table_data = view.GetRetweetRange(hash_limit)
+                        for t in table_data:
+                            t['data_tweet'] = str(t['data_tweet'])
+                            t['data_retweet'] = str(t['data_retweet'])
                     if table == FOLLOW_TABLE:
                         table_data = view.GetFollowRange(hash_limit) 
                     if table == TOKEN_TABLE:
@@ -927,7 +905,6 @@ class TweeterServer(MultiThreadedServer):
                 recv_bytes = socket_client.recv(4026)
                 data_dict = util.decode(recv_bytes)
 
-            
             socket_client.close()
 
 
