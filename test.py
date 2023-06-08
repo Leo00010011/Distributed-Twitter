@@ -4,8 +4,9 @@ import datetime
 import hashlib
 
 # print(x[2].name)
-# CreateTweet('I will love you...babeeeee, ALWAYS', 'Lexa', date=None)
-x = hashlib.sha256(b'Lexa').hexdigest()
-h = int(x,16)
-print(x)
-print(h)
+CreateTweet('I will love you...babeeeee, ALWAYS', 'Lexa', date=None)
+
+t,r = GetProfileRange('Lexa', 0, 10)
+for tw in t:
+    tw['date'] = str(tw['date'])
+print(t)

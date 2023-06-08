@@ -82,6 +82,7 @@ class ShellClient():
                     pass
                 # Seguir Usuario
                 elif args[0] == "6" and len(args) == 1:
+                    print('intentar follow')
                     self.follow()
                 # Cerrar Sesion
                 elif args[0] == "7" and len(args) == 1:
@@ -213,14 +214,23 @@ class ShellClient():
                 succesed, data_profile, over = self.client.profile(nick, self.token, self.nick, block)
                 i = block*10
                 if succesed:
-                    for date, (text, nick_retweet) in data_profile.items():
-                        if nick_retweet is None:
-                            print(f'Dweet {i}, {date}:')
-                            print(text)
-                        else:
-                            print(f'ReDweet {i}, de {nick_retweet}, {date}:')
-                            print(text)
+                    tweet = data_profile['tweets']
+                    retweet = data_profile['retweets']
+                    
+                    print('|======< Inicio del Perfil >======|')
+                    
+                    
+                    for t in tweet:
+                        print(f'{i} Tweet de {nick} del {t["date"]}:\n')
+                        print(t["text"])
                         i+=1
+                    
+                    for r in retweet: 
+                        print(f'{i} ReTweet de {r["alias"]} del {r["date_retweet"]}')
+                        print(f'Tweet Original de {r["nick"]} del {r["date_tweet"]}:\n')
+                        print(r["text"])
+                        i+=1
+                    
                     if over:
                         print('|======< Fin del Perfil >======|')
                         break
@@ -254,7 +264,7 @@ class ShellClient():
 
             succesed, error = self.client.follow(nick, self.token, self.nick)
             if succesed:
-                print(f'Comenzo a seguir a "{nick}" CON EXITO!!!')
+                print(f'Comenzo a seguir a @{nick} CON EXITO!!!')
                 print('Pulse ENTER para volver a intentar, o escriba "q" para volver al menu principal')
                 input()
                 return

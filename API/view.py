@@ -111,24 +111,24 @@ def CreateReTweet(user_id, nick, date, retweet_date = None):
 
 
 def GetUserPaswordRange(hash_limit, offset = None, limit = None):
-    if offset is None or limit is None: return User.select().where(User.alias_hash <= hash_limit).order_by(User.alias).dict()[:]
-    return User.select().where(User.alias_hash <= hash_limit).order_by(User.alias).offset(offset).limit(limit).dict()[:]
+    if offset is None or limit is None: return User.select().where(User.alias_hash <= hash_limit).order_by(User.alias).dicts()[:]
+    return User.select().where(User.alias_hash <= hash_limit).order_by(User.alias).offset(offset).limit(limit).dicts()[:]
 
 def GetTweetRange(hash_limit, offset = None, limit = None):
-    if offset is None or limit is None: return Tweet.select().join(User).where(User.alias_hash <= hash_limit).order_by(Tweet.date.desc()).dict()[:]
-    return Tweet.select().join(User).where(User.alias_hash <= hash_limit).order_by(Tweet.date.desc()).offset(offset).limit(limit).dict()[:]
+    if offset is None or limit is None: return Tweet.select().join(User).where(User.alias_hash <= hash_limit).order_by(Tweet.date.desc()).dicts()[:]
+    return Tweet.select().join(User).where(User.alias_hash <= hash_limit).order_by(Tweet.date.desc()).offset(offset).limit(limit).dicts()[:]
 
 def GetRetweetRange(hash_limit, offset = None, limit = None):
-    if offset is None or limit is None: return Retweet.select().join(User).where(User.alias_hash <= hash_limit).order_by(Retweet.date_retweet.desc()).dict()[:]
-    return Retweet.select().join(User).where(User.alias_hash <= hash_limit).order_by(Retweet.date_retweet.desc()).offset(offset).limit(limit).dict()[:]
+    if offset is None or limit is None: return ReTweet.select().join(User).where(User.alias_hash <= hash_limit).order_by(ReTweet.date_retweet.desc()).dicts()[:]
+    return ReTweet.select().join(User).where(User.alias_hash <= hash_limit).order_by(ReTweet.date_retweet.desc()).offset(offset).limit(limit).dicts()[:]
 
 def GetFollowRange(hash_limit, offset = None, limit = None):
-    if offset is None or limit is None: return Follow.select().join(User).where(User.alias_hash <= hash_limit).order_by(User.alias.desc()).dict()[:]
-    return Follow.select().join(User).where(User.alias_hash <= hash_limit).order_by(User.alias.desc()).offset(offset).limit(limit).dict()[:]
+    if offset is None or limit is None: return Follow.select().join(User).where(User.alias_hash <= hash_limit).order_by(User.alias.desc()).dicts()[:]
+    return Follow.select().join(User).where(User.alias_hash <= hash_limit).order_by(User.alias).offset(offset).limit(limit).dicts()[:]
 
 def GetTokenRange(hash_limit, offset = None, limit = None):
-    if offset is None or limit is None: return Token.select().join(User).where(User.alias_hash <= hash_limit).order_by(User.alias.desc()).dict()[:]
-    return Token.select().join(User).where(User.alias_hash <= hash_limit).order_by(User.alias.desc()).offset(offset).limit(limit).dict()[:]
+    if offset is None or limit is None: return Token.select().join(User).where(User.alias_hash <= hash_limit).order_by(User.alias.desc()).dicts()[:]
+    return Token.select().join(User).where(User.alias_hash <= hash_limit).order_by(User.alias).offset(offset).limit(limit).dicts()[:]
 
 
 def DeleteUserRange(hash_limit):
@@ -145,7 +145,7 @@ def DeleteTweetRange(hash_limit):
         return False
 def DeleteRetweetRange(hash_limit):
     try :
-        Retweet.delete().join(User).where(User.alias_hash <= hash_limit).execute() 
+        ReTweet.delete().join(User).where(User.alias_hash <= hash_limit).execute() 
         return True
     except:
         return False
@@ -171,7 +171,19 @@ def CreateFollow(nick1,nick2):
         return False 
 
 def GetProfileRange(nick, offset, limit):
-    return (Tweet.select().join(User).where(User.alias == nick).order_by(Tweet.date.descendent()).offset(offset).limit(limit)[:], Retweet.select().join(User).where(User.alias == nick).order_by(Retweet.date_retweet.descendent()).offset(offset).limit(limit)[:])
+    print(nick)
+    tweet = []
+    retweet = []
+    try:
+        tweet = Tweet.select(Tweet.text, Tweet.date,User.name, User.alias).join(User).where(User.alias == nick).order_by(Tweet.date.desc()).offset(offset).limit(limit).dicts()[:]
+        
+    except: pass
+    try:
+        retweet = ReTweet.select(ReTweet.date_tweet, ReTweet.date_retweet, ReTweet.nick, User.alias, User.name).join(User).where(User.alias == nick).order_by(ReTweet.date_retweet.desc()).offset(offset).limit(limit).dicts()[:]
+        
+    except: pass
+    
+    return (tweet,retweet)
 
 
 def GetFollowed(nick):

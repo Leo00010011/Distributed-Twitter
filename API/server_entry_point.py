@@ -149,6 +149,8 @@ class EntryPointServerTheaded(MultiThreadedServer):
                 self.retweet_request_from_client(id, task, event, storage, data)
             elif protocol == FEED_REQUEST:
                 self.feed_request_from_client(id, task, event, storage, data)
+            elif protocol == FOLLOW_REQUEST:
+                self.follow_request_from_client(id, task, event, storage, data)
             else:
                 print('Q pifia metes?')
         elif type_msg == ENTRY_POINT:
@@ -172,7 +174,9 @@ class EntryPointServerTheaded(MultiThreadedServer):
             elif protocol == RETWEET_RESPONSE:
                 self.feed_response_from_logger(id, task, event, storage, data)
             elif protocol == FEED_RESPONSE:
-                self.feed_response_from_logger(id, task, event, storage, data)            
+                self.feed_response_from_logger(id, task, event, storage, data)  
+            elif protocol == FOLLOW_RESPONSE:
+                self.follow_response_from_logger(id, task, event, storage, data)
             else:
                 print('Q pifia metes?')
         elif type_msg == CHORD:
@@ -496,9 +500,7 @@ class EntryPointServerTheaded(MultiThreadedServer):
 
     def create_tweet_response_from_logger(self, id:int,task: tuple[socket.socket,object],event:Event, storage, data: dict):
 
-        print('Respuesta del tweet en el Entry')
-        print(good)
-        print(error)
+
         with self.lock:
             self.stalker_loggers.update_IP(task[1][0])
         state = storage.get_state(data['id_request'])
@@ -549,7 +551,8 @@ class EntryPointServerTheaded(MultiThreadedServer):
                     'proto': PROFILE_RESPONSE,
                     'succesed': True,
                     'data_profile': state.desired_data['data_profile'],
-                    'error': None
+                    'error': None,
+                    'over':state.desired_data['over'],
                 }
             else:
                 msg = {
@@ -591,9 +594,11 @@ class EntryPointServerTheaded(MultiThreadedServer):
 
     def follow_request_from_client(self, id:int,task: tuple[socket.socket,object],event:Event, storage, data: dict):
         
+        print('Follow Recibido Entry')
         token = data['token']
         nick = data['nick']
         nick_profile = data['nick_profile']        
+        print('Follow Recibido Entry 2')
 
         state = storage.insert_state()
         message = {
@@ -604,8 +609,9 @@ class EntryPointServerTheaded(MultiThreadedServer):
             'nick_profile': nick_profile,
             'id_request': state.id
         }
-
+        print('try_send')
         good, error = self.try_send_logger(message)
+        print(error)
         if not good:
             msg = {
                 'type': ENTRY_POINT,
@@ -614,6 +620,7 @@ class EntryPointServerTheaded(MultiThreadedServer):
                 'error': 'Conexion con logger fallida'
             }
         elif state.hold_event.wait(10):
+            print('No wait')
             state = storage.get_state(state.id)
             if state is None:
                 #TODO ver que pasa aqui !!!!!!!!!!
