@@ -2,7 +2,7 @@ from queue import Queue, Empty
 from threading import Thread, Event, Lock
 import concurrent.futures
 from time import sleep
-from socket import socket, AF_INET, SOCK_STREAM
+from socket import socket, AF_INET, SOCK_STREAM, SOL_SOCKET,SO_REUSEADDR
 
 def integer_numbers():
     i = 0
@@ -143,7 +143,8 @@ class MultiThreadedServer:
             for id in range(self.thread_count):
                 executor.submit(self.consumer_func,id,self.task_list,self.end_event,self.parse_func,self.timeout, self.storage)
                 self.current_thread_count += 1                
-            s = socket(family = AF_INET, type = SOCK_STREAM)            
+            s = socket(family = AF_INET, type = SOCK_STREAM)    
+            s.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)        
             s.bind(("0.0.0.0", self.port))
             s.listen(5)
             print('Listen')
