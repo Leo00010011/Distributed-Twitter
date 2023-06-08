@@ -226,7 +226,7 @@ class ChordServer:
         Thread(target=ChordServer.MaintainFt , args=[self] , daemon=True).start()
         msg = self.build_insert_response()
         # print('builded msg')
-        self.send_and_close(['127.0.0.1'],msg,util.PORT_GENERAL_LOGGER)
+        # self.send_and_close(['127.0.0.1'],msg,util.PORT_GENERAL_LOGGER)
         self.register_in_entry()
         self.update_log(f'inserted')
         server_thread.join()
@@ -480,7 +480,7 @@ class ChordServer:
             if not self.busy:
                 self.busy = True
         if busy:
-            socket_client.send('Busy ,0 ,none ,none'.encode()) 
+            socket_client.send('Busy,0,none,none'.encode()) 
         else:
             result = None
             with self.Ft_lock:
@@ -493,7 +493,7 @@ class ChordServer:
                 res_id -= self.max_id
             res_id_hex = hex(res_id)[2:]
             # (Busy|Ok) ,id ,ip
-            socket_client.send(f'Ok ,{res_id_hex} ,{result.ip} ,{res_as_max}'.encode()) 
+            socket_client.send(f'Ok,{res_id_hex},{result.ip},{res_as_max}'.encode()) 
         socket_client.close()
         self.update_log('end rec ImYPrev')
 
@@ -598,8 +598,6 @@ class ChordServer:
                 break
         self.update_log('send ended')
         return response
-
-
 
 id = int(input())
 server = ChordServer(id,'log',15000,'file')
