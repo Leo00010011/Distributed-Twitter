@@ -143,13 +143,13 @@ class ChordNode:
        self.as_max = as_max     
 
 class ChordServer:
-    def __init__(self,DHT_name ,port ,disable_log):
+    def __init__(self,id,DHT_name ,port ,disable_log):
         self.DHT_name = DHT_name
         self.disable_realtime_log = disable_log
         self.log_lock = Lock()
         self.request_count = {}
         self.max_id = int(''.join(['f' for _ in range(64)]) ,16)
-        # self.max_id = 1000000
+        self.max_id = 1000000
         self.Ft: list[ChordNode] = [None]*floor(log2(self.max_id + 1))
         self.state_storage = StateStorage()
         self.port = port
@@ -170,10 +170,10 @@ class ChordServer:
         self.Ft_lock = Lock()
         #TODO gen ID
         self.ip = get_my_ip()
-        # self.id = id
-        # self.id_hex = hex(self.id)[2:]
-        self.id_hex = hashlib.sha256(self.ip.encode()).hexdigest()
-        self.id = int(self.id_hex ,16)
+        self.id = id
+        self.id_hex = hex(self.id)[2:]
+        # self.id_hex = hashlib.sha256(self.ip.encode()).hexdigest()
+        # self.id = int(self.id_hex ,16)
         self.log: list[str] = []
         self.response ={
             self.confirm_cmd:self.rec_confirm_new_prev ,
@@ -269,9 +269,9 @@ class ChordServer:
 
     def print_log(self):
         with self.log_lock:
-            # clear()
-            # print('---------------------')
-            # print(f'log of node_{self.id_hex} at {str(datetime.datetime.now().time())}')
+            clear()
+            print('---------------------')
+            print(f'log of node_{self.id_hex} at {str(datetime.datetime.now().time())}')
             if(not(self.disable_realtime_log == 'yes')):
                 if(self.disable_realtime_log == 'file'):
                     with open(f'node_{self.id_hex}.log','a') as f:
@@ -282,16 +282,16 @@ class ChordServer:
                     for entry , time_str in self.log:
                         print(f'{time_str}- {entry}')
 
-            # print('request count')
-            # for key in self.request_count.keys():
-                # print(f'{key}: {self.request_count[key]}')
-            # print('FingerTable:')
-            # with self.Ft_lock:
-                # for index , node in enumerate(self.Ft):
-                    # if not node:
-                        # print('Not initialiced')
-                    # else:
-                        # print(f'{index})   ip:{node.ip}   id:{node.id}   as_max: {node.as_max}')
+            print('request count')
+            for key in self.request_count.keys():
+                print(f'{key}: {self.request_count[key]}')
+            print('FingerTable:')
+            with self.Ft_lock:
+                for index , node in enumerate(self.Ft):
+                    if not node:
+                        print('Not initialiced')
+                    else:
+                        print(f'{index})   ip:{node.ip}   id:{node.id}   as_max: {node.as_max}')
 
 
 
@@ -560,8 +560,8 @@ class ChordServer:
         if msg_dict['type'] == util.LOGGER:
             # print('is logger request')
             print(f'recived outside req for {msg_dict["hash"]}')
-            nick_hash = hashlib.sha256(msg_dict['hash'].encode()).hexdigest()
-            # nick_hash = int(msg_dict['hash'])
+            # nick_hash = hashlib.sha256(msg_dict['hash'].encode()).hexdigest()
+            nick_hash = hex(int(msg_dict['hash']))[2:]
             result = ParsedMsg(self.outside_cmd ,nick_hash ,'0' ,'False' ,msg_dict['id_req'])
         else:
             # print('is intern request')
@@ -603,8 +603,8 @@ class ChordServer:
         self.update_log('send ended')
         return response
 
-# id = int(input())
-server = ChordServer('log',15000,'file')
+id = int(input())
+server = ChordServer(id,'log',15000,'file')
 server.start()
     
 
