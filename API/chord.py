@@ -148,8 +148,8 @@ class ChordServer:
         self.disable_realtime_log = disable_log
         self.log_lock = Lock()
         self.request_count = {}
-        # self.max_id = int(''.join(['f' for _ in range(64)]) ,16)
-        self.max_id = 1000000
+        self.max_id = int(''.join(['f' for _ in range(64)]) ,16)
+        # self.max_id = 1000000
         self.Ft: list[ChordNode] = [None]*floor(log2(self.max_id + 1))
         self.state_storage = StateStorage()
         self.port = port
@@ -170,10 +170,10 @@ class ChordServer:
         self.Ft_lock = Lock()
         #TODO gen ID
         self.ip = get_my_ip()
-        self.id = id
-        self.id_hex = hex(self.id)[2:]
-        # self.id_hex = hashlib.sha256(self.ip.encode()).hexdigest()
-        # self.id = int(self.id_hex ,16)
+        # self.id = id
+        # self.id_hex = hex(self.id)[2:]
+        self.id_hex = hashlib.sha256(self.ip.encode()).hexdigest()
+        self.id = int(self.id_hex ,16)
         self.log: list[str] = []
         self.response ={
             self.confirm_cmd:self.rec_confirm_new_prev ,
@@ -214,7 +214,7 @@ class ChordServer:
             self.Ft[i] = succ_node
 
     def start(self):
-        Thread(target= ChordServer.sleeping_log , args=[self] ,daemon = True).start()
+        # Thread(target= ChordServer.sleeping_log , args=[self] ,daemon = True).start()
         server_thread = Thread(target= self.server.start_server)
         server_thread.start()
         ips = self.get_some_node()
@@ -556,9 +556,9 @@ class ChordServer:
         if msg_dict['type'] == util.LOGGER:
             # print('is logger request')
             print(f'recived outside req for {msg_dict["hash"]}')
-            # nick_hash = hashlib.sha256(msg_dict['hash'].encode()).hexdigest()
-            nick_hash = int(msg_dict['hash'])
-            result = ParsedMsg(self.outside_cmd ,hex(nick_hash)[2:] ,'0' ,'False' ,msg_dict['id_req'])
+            nick_hash = hashlib.sha256(msg_dict['hash'].encode()).hexdigest()
+            # nick_hash = int(msg_dict['hash'])
+            result = ParsedMsg(self.outside_cmd ,nick_hash ,'0' ,'False' ,msg_dict['id_req'])
         else:
             # print('is intern request')
             arr = msg_dict['content'].split(' ,')
