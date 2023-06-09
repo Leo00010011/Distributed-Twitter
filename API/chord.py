@@ -143,13 +143,13 @@ class ChordNode:
        self.as_max = as_max     
 
 class ChordServer:
-    def __init__(self,id ,DHT_name ,port ,disable_log):
+    def __init__(self,id,DHT_name ,port ,disable_log):
         self.DHT_name = DHT_name
         self.disable_realtime_log = disable_log
         self.log_lock = Lock()
         self.request_count = {}
-        # self.max_id = int(''.join(['f' for _ in range(64)]) ,16)
-        self.max_id = 1000000
+        self.max_id = int(''.join(['f' for _ in range(64)]) ,16)
+        # self.max_id = 1000000
         self.Ft: list[ChordNode] = [None]*floor(log2(self.max_id + 1))
         self.state_storage = StateStorage()
         self.port = port
@@ -170,10 +170,10 @@ class ChordServer:
         self.Ft_lock = Lock()
         #TODO gen ID
         self.ip = get_my_ip()
-        self.id = id
-        self.id_hex = hex(self.id)
-        # self.id_hex = hashlib.sha256(self.ip.encode()).hexdigest()
-        # self.id = int(self.id_hex ,16)
+        # self.id = id
+        # self.id_hex = hex(self.id)[2:]
+        self.id_hex = hashlib.sha256(self.ip.encode()).hexdigest()
+        self.id = int(self.id_hex ,16)
         self.log: list[str] = []
         self.response ={
             self.confirm_cmd:self.rec_confirm_new_prev ,
@@ -214,7 +214,7 @@ class ChordServer:
             self.Ft[i] = succ_node
 
     def start(self):
-        Thread(target= ChordServer.sleeping_log , args=[self] ,daemon = True).start()
+        # Thread(target= ChordServer.sleeping_log , args=[self] ,daemon = True).start()
         server_thread = Thread(target= self.server.start_server)
         server_thread.start()
         ips = self.get_some_node()
@@ -318,10 +318,9 @@ class ChordServer:
         if k < self.id:
             less_than_me = True
             k += self.max_id
-            self.update_log(f'succ who: {k}')
-
+        
         for i in range(2 ,len(self.Ft)):
-            if (self.Ft[i].id <= k < self.Ft[i + 1].id) or (i == (len(self.Ft) - 1)):
+            if ((i == (len(self.Ft) - 1)) or (self.Ft[i].id <= k < self.Ft[i + 1].id)):
                 if less_than_me and self.Ft[i].as_max:
                     num = self.Ft[i].id - self.max_id
                     num_hex = hex(num)[2:]
@@ -370,7 +369,7 @@ class ChordServer:
             response = self.send_and_close(ips ,msg ,port)
             if not response:
                 self.update_log(f'failed to send {req_name} to {ips}:{port}')
-            sleep(2)
+                sleep(2)
         return response
 
 
@@ -398,6 +397,8 @@ class ChordServer:
         
     
     def rec_outside_get(self ,msg:ParsedMsg ,socket_client ,addr):
+        socket_client.close()
+        print(f'recived outside req for {msg.id_hex}')
         self.update_log(f'start rec outside_get {msg.id_hex}')
         # {type:'logger' , proto:'chord'}]   
         holder : ThreadHolder= self.state_storage.insert_state()
@@ -413,6 +414,7 @@ class ChordServer:
                 self.update_log(f'failed to get succ of {msg.id}')
         self.state_storage.delete_state(holder.id)
         self.update_log('responding to outside')
+        print('starting to respond')
         # type: LOGGER
         # proto: CHORD_RESPONSE
         # IP: [Replicas del sucesor]
@@ -557,8 +559,10 @@ class ChordServer:
         result = None
         if msg_dict['type'] == util.LOGGER:
             # print('is logger request')
+            print(f'recived outside req for {msg_dict["hash"]}')
             nick_hash = hashlib.sha256(msg_dict['hash'].encode()).hexdigest()
-            result = ParsedMsg(self.outside_cmd ,nick_hash ,'0','False' ,msg_dict['id_req'])
+            # nick_hash = int(msg_dict['hash'])
+            result = ParsedMsg(self.outside_cmd ,nick_hash ,'0' ,'False' ,msg_dict['id_req'])
         else:
             # print('is intern request')
             arr = msg_dict['content'].split(',')
