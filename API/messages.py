@@ -9,16 +9,10 @@ import socket
 from socket import AF_INET, SOCK_STREAM
 
 def send_and_close(ip, port, data):
-    print('send and close')
-    print(ip, port, data)
     skt = socket.socket(AF_INET,SOCK_STREAM)
-    print('socket')
     skt.connect((ip,port))
-    print('connect')
     skt.send(util.encode(data))
-    print('send')
     skt.close()
-    print('close')
 
 def only_send(ip, port, data):
     skt = socket.socket(AF_INET,SOCK_STREAM)
@@ -27,7 +21,7 @@ def only_send(ip, port, data):
     return skt
 
 def wait_get_delete(storage, state):
-    state.hold_event.wait(5)
+    state.hold_event.wait(10)
     state = storage.get_state(state.id)
     storage.delete_state(state.id)
 
@@ -117,7 +111,7 @@ def follow_response_msg(succesed, error, id_request):
             'proto': FOLLOW_RESPONSE,
             'succesed':succesed ,
             'error':error,
-            'id_request':id_request 
+            'id_request':id_request
         }
     return data
 
@@ -132,17 +126,27 @@ def feed_response_msg(succesed, error, id_request, data):
         }
     return msg
 
-def profile_response_msg(succesed, error, id_request, data_profile):
+def profile_response_msg(succesed, error, id_request, data_profile, over):
     data = {
             'type': TWEET,
             'proto': PROFILE_RESPONSE,
             'succesed':succesed ,
             'error':error,
             'data_profile': data_profile,
-            'id_request':id_request 
+            'id_request':id_request,
+            'over': over 
         }
     return data
 
+def profile_data_request_msg(nick, id_request, block):
+    data = {
+            'type': TWEET,
+            'proto': PROFILE_DATA_REQUEST,
+            'nick_profile': nick,
+            'block': block,
+            'id_request':id_request 
+        }
+    return data
 
 def logout_request_msg(nick,token,id_request):
     data = {
@@ -204,4 +208,25 @@ def check_tweet_response_msg(exist, id_request, text):
                 'id_request':id_request,
                 'text':text 
             }
+    return data
+
+def check_user_profile_request_msg(nick, id_request):
+
+    data = {
+            'type': TWEET,
+            'proto': CHECK_USER_REQUEST,
+            'nick':nick, 
+            'id_request': id_request
+    }
+    return data
+
+def check_user_profile_response_msg(succesed, error, id_request):
+
+    data = {
+            'type': TWEET,
+            'proto': CHECK_USER_RESPONSE,
+            'succesed':succesed,
+            'error':error,
+            "id_request":id_request,
+    }
     return data

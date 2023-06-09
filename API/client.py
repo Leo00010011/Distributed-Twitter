@@ -189,6 +189,8 @@ class Client():
         
         if recv_data['proto'] == PROFILE_RESPONSE:
             if recv_data['succesed']:
+
+                print("DATA RECIBIDA:", recv_data)
                 return True, recv_data['data_profile'], recv_data['over']
             else:
                 # print(recv_data['error'])
@@ -201,17 +203,18 @@ class Client():
 
         msg = {
             'type': CLIENT,
-            'proto': PROFILE_REQUEST,
+            'proto': FOLLOW_REQUEST,
             'token': token,
             'nick': nick,
             'nick_profile': nick_profile,
         }
-
-        good, recv_data = self.try_send_recv(msg)
+        #print('Walow')
+        print('Follow CLient')
+        good, recv_data = self.try_send_recv(msg)        
         if not good:
             return False, str(recv_data)
         
-        if recv_data['proto'] == PROFILE_RESPONSE:
+        if recv_data['proto'] == FOLLOW_RESPONSE:
             if recv_data['succesed']:
                 return True, None
             else:
