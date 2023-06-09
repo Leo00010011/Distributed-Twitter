@@ -214,7 +214,7 @@ class ChordServer:
             self.Ft[i] = succ_node
 
     def start(self):
-        # Thread(target= ChordServer.sleeping_log , args=[self] ,daemon = True).start()
+        Thread(target= ChordServer.sleeping_log , args=[self] ,daemon = True).start()
         server_thread = Thread(target= self.server.start_server)
         server_thread.start()
         ips = self.get_some_node()
@@ -272,9 +272,9 @@ class ChordServer:
 
     def print_log(self):
         with self.log_lock:
-            clear()
-            print('---------------------')
-            print(f'log of node_{self.id_hex} at {str(datetime.datetime.now().time())}')
+            # clear()
+            # print('---------------------')
+            # print(f'log of node_{self.id_hex} at {str(datetime.datetime.now().time())}')
             if(not(self.disable_realtime_log == 'yes')):
                 if(self.disable_realtime_log == 'file'):
                     with open(f'node_{self.id_hex}.log','a') as f:
@@ -285,16 +285,16 @@ class ChordServer:
                     for entry , time_str in self.log:
                         print(f'{time_str}- {entry}')
 
-            print('request count')
-            for key in self.request_count.keys():
-                print(f'{key}: {self.request_count[key]}')
-            print('FingerTable:')
-            with self.Ft_lock:
-                for index , node in enumerate(self.Ft):
-                    if not node:
-                        print('Not initialiced')
-                    else:
-                        print(f'{index})   ip:{node.ip}   id:{node.id}   as_max: {node.as_max}')
+            # print('request count')
+            # for key in self.request_count.keys():
+                # print(f'{key}: {self.request_count[key]}')
+            # print('FingerTable:')
+            # with self.Ft_lock:
+                # for index , node in enumerate(self.Ft):
+                    # if not node:
+                        # print('Not initialiced')
+                    # else:
+                        # print(f'{index})   ip:{node.ip}   id:{node.id}   as_max: {node.as_max}')
 
 
 
@@ -611,6 +611,7 @@ class ChordServer:
                 break
         self.update_log('send ended')
         return response
+
 
 #id = int(input())
 #server = ChordServer(id,'log',15000,'file')
