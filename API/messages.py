@@ -23,16 +23,19 @@ def only_send(ip, port, data):
 def wait_get_delete(storage, state):
     state.hold_event.wait(10)
     state = storage.get_state(state.id)
+    print('dentro del wait get delete')
+    print(state)
     storage.delete_state(state.id)
 
     return state
 
 def do_chord_sequence(storage, nick):
-        state = storage.insert_state()
-        #Hay que usar Chord para ver quien tiene a ese Nick
-        data = chord_request_msg(nick, state.id) #Construir la peticion del chord
-        send_and_close('127.0.0.1', CHORD_PORT, data)
-        return wait_get_delete(storage, state) 
+    state = storage.insert_state()
+    #Hay que usar Chord para ver quien tiene a ese Nick
+    data = chord_request_msg(nick, state.id) #Construir la peticion del chord
+    print('Lo que le mando al CHORD:', data)
+    send_and_close('127.0.0.1', CHORD_PORT, data)
+    return wait_get_delete(storage, state) 
 
 def login_request_msg(nick,password,id_request):
     data = {
