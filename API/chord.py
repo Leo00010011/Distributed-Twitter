@@ -433,7 +433,7 @@ class ChordServer:
             'id_request':msg.req_id
         }
         socket_client = socket(AF_INET, SOCK_STREAM)
-        socket_client.connect((addr[0], util.PORT_GENERAL_LOGGER))
+        socket_client.connect(('127.0.0.1', util.PORT_GENERAL_LOGGER))
         socket_client.send(util.encode(msg_dict))
         socket_client.close()
         self.update_log(f'end outside req')
@@ -614,8 +614,8 @@ class ChordServer:
 
 
 #id = int(input())
-#server = ChordServer(id,'log',15000,'file')
-#server.start()
+server = ChordServer('log',15000,'file')
+server.start()
 
 
 
