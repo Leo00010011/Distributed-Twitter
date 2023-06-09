@@ -57,7 +57,7 @@ class TweeterServer(MultiThreadedServer):
         ---------------------------------------
         `data_dict['type']`: Tipo de peticion
         '''
-        print("\n\n ME ESCRIBIERON UwU \n \n")
+        print("\n ME ESCRIBIERON UwU \n")
         (socket_client, addr_client) = task
         data_byte = socket_client.recv(15000)
         
@@ -106,6 +106,9 @@ class TweeterServer(MultiThreadedServer):
             
             elif proto_rqst in  (LOGIN_RESPONSE, REGISTER_RESPONSE, CHORD_RESPONSE, LOGOUT_RESPONSE): 
                 self.set_data(socket_client, addr_client, data_dict,storage)
+            elif proto_rqst == HELLO:
+                self.say_welcome(socket_client, addr_client, data_dict, storage)
+
             
         elif type_rqst == TWEET:
             
@@ -326,6 +329,7 @@ class TweeterServer(MultiThreadedServer):
     def tweet_request(self, socket_client, addr_client, data_dict, storage): 
 
         print('Tweet Request')
+        print(data_dict)
         socket_client.close()    
         #pedir un evento para m\'aquina de estado 
         nick = data_dict['nick']
@@ -698,12 +702,17 @@ class TweeterServer(MultiThreadedServer):
         send_and_close(addr_client[0], PORT_GENERAL_LOGGER, data)
         
     def new_logger_response(self, socket_client, addr_client, data_dict,storage):
+        print('entre al new logger response')
+        socket_client.send('OK'.encode())
         socket_client.close()
-        if self.chord_id: 
+        if self.chord_id:
             return
+        print('paso el if') 
         print(data_dict)
-        suc = data_dict.get('succesor', None)
-        sib = data_dict('siblings',None)
+        suc = data_dict.get('sucesors', [])
+        print(suc)
+        sib = data_dict('siblings',[])
+        print(sib)
         
         self.say_hello(sib)
         self.chord_id = data_dict['chord_id']
@@ -854,12 +863,13 @@ class TweeterServer(MultiThreadedServer):
 
     def say_hello(self, siblings):
         self.siblings = siblings
+        print('dentro del SAY HELLO', siblings)
         data = {
             'type': LOGGER,
             'proto': HELLO,
             'primary': len(siblings) < 5
         }
-
+        
         for s in siblings:
             skt = socket.socket(AF_INET,PORT_GENERAL_LOGGER)
             skt.connect((s, CHORD_PORT))
@@ -880,7 +890,7 @@ class TweeterServer(MultiThreadedServer):
         
         data = {
             'type': LOGGER,
-            'proto': WELCOME,
+            'proto': WELLCOME,
             'primary': self.primary
         }
         socket_client.send(util.encode(data))

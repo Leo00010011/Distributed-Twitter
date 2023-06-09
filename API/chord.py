@@ -143,7 +143,7 @@ class ChordNode:
        self.as_max = as_max     
 
 class ChordServer:
-    def __init__(self,id,DHT_name ,port ,disable_log):
+    def __init__(self,DHT_name ,port ,disable_log):
         self.DHT_name = DHT_name
         self.disable_realtime_log = disable_log
         self.log_lock = Lock()
@@ -220,13 +220,16 @@ class ChordServer:
         ips = self.get_some_node()
         if len(ips) == 0:
             self.update_log('is first')
+            print('soy primero')
             self.insert_as_first()
         else:
+            print('NO soy PRIMERO')
+            print(ips)
             self.insert(ips)
         Thread(target=ChordServer.MaintainFt , args=[self] , daemon=True).start()
         msg = self.build_insert_response()
-        # print('builded msg')
-        # self.send_and_close(['127.0.0.1'],msg,util.PORT_GENERAL_LOGGER)
+        print('builded msg')
+        self.send_and_close(['127.0.0.1'],msg,util.PORT_GENERAL_LOGGER)
         self.register_in_entry()
         self.update_log(f'inserted')
         server_thread.join()
@@ -401,17 +404,22 @@ class ChordServer:
         print(f'recived outside req for {msg.id_hex}')
         self.update_log(f'start rec outside_get {msg.id_hex}')
         # {type:'logger' , proto:'chord'}]   
-        holder : ThreadHolder= self.state_storage.insert_state()
+        print(f'antes de insertar el estado')
+        holder : ThreadHolder = self.state_storage.insert_state()
+        print(f'antes del while')
         while not holder.desired_data:
             me = self.succ(msg.id ,self.ip ,False ,holder.id)
             self.update_log(f'me:{str(me)}')
+            print(f'me:{str(me)}')
             if not me:
                 self.update_log('starting to wait')
+                print('starting to wait')
                 holder.hold_event.wait(5)
             else:
                 holder.desired_data = ChordNode(self.id ,self.id_hex ,self.ip ,False)
             if not holder.desired_data:
                 self.update_log(f'failed to get succ of {msg.id}')
+                print('starting to wait')
         self.state_storage.delete_state(holder.id)
         self.update_log('responding to outside')
         print('starting to respond')
@@ -422,7 +430,7 @@ class ChordServer:
             'type': util.LOGGER ,
             'proto': util.CHORD_RESPONSE ,
             'IP':[holder.desired_data.ip] ,
-            'id_req':msg.req_id
+            'id_request':msg.req_id
         }
         socket_client = socket(AF_INET, SOCK_STREAM)
         socket_client.connect((addr[0], util.PORT_GENERAL_LOGGER))
@@ -540,7 +548,7 @@ class ChordServer:
         # chord_id: mi sha
         msg_dict = {
             'type': util.CHORD ,
-            'proto': util.NEW_LOGGER_RESPONSE ,
+            'proto': util.NEW_LOGGER_REQUEST,
             'sucesors': [self.Ft[1].ip] ,
             'siblings':[] ,
             'chord_id': self.id_hex
@@ -561,8 +569,9 @@ class ChordServer:
             # print('is logger request')
             print(f'recived outside req for {msg_dict["hash"]}')
             nick_hash = hashlib.sha256(msg_dict['hash'].encode()).hexdigest()
+            print(nick_hash)
             # nick_hash = int(msg_dict['hash'])
-            result = ParsedMsg(self.outside_cmd ,nick_hash ,'0' ,'False' ,msg_dict['id_req'])
+            result = ParsedMsg(self.outside_cmd ,nick_hash ,'0' ,'False' ,msg_dict['id_request'])
         else:
             # print('is intern request')
             arr = msg_dict['content'].split(',')
@@ -603,10 +612,10 @@ class ChordServer:
         self.update_log('send ended')
         return response
 
-id = int(input())
-server = ChordServer(id,'log',15000,'file')
-server.start()
-    
+#id = int(input())
+#server = ChordServer(id,'log',15000,'file')
+#server.start()
+
 
 
 
