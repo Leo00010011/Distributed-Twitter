@@ -173,6 +173,7 @@ class ChordServer:
         # self.id = id
         # self.id_hex = hex(self.id)[2:]
         self.id_hex = hashlib.sha256(self.ip.encode()).hexdigest()
+        print('Mi ID HEXADECIMAL es', self.id_hex)
         self.id = int(self.id_hex ,16)
         self.log: list[str] = []
         self.response ={
@@ -614,8 +615,8 @@ class ChordServer:
 
 
 #id = int(input())
-server = ChordServer('log',15000,'file')
-server.start()
+#server = ChordServer('log',15000,'file')
+#server.start()
 
 
 
