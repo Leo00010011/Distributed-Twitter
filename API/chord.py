@@ -20,35 +20,6 @@ except:
     from API.threaded_server import MultiThreadedServer
 
 
-
-# cuando termina de insertar
-# type: Chord(Utils)
-# proto: NEW_LOGGER_RESPONSE(Utils)
-# sucesors: [los ips de los sucesores]
-# siblings: [lista de replicas]
-# chord_id: mi sha
-
-# outside_resp
-# type: LOGGER
-# proto: CHORD_RESPONSE
-# IP: [Sucesores de la replica]
-
-# outside_req
-# type: LOGGER
-# proto: CHORD_REQUEST
-# hash: (el nick para hashear) 
-# id_req: (int)
-
-# Comunication
-#  * Rec(Soy tu nuevo predecesor)
-#  * Env(Soy tu nuevo predecesor)
-#  * Rec(Soy tu nuevo sucesor)
-#  * Env(Soy tu nuevo sucesor)
-#  * Rec(<<DAME>> el sucesor de k , mode)
-#  * Rec(<<DALE a IP>> el sucesor de k , mode)
-#  * Env(<<DALE a IP>> el sucesor de k , mode)
-#  * Env(Get some ChordNode)
-#  * Rec(Get some ChordNode)
 def get_my_ip():
     hostname = gethostname()
     ip = gethostbyname(hostname)
@@ -126,21 +97,31 @@ class StateStorage:
 # generate hash of a name
 # hashlib.sha256('leonardo'.encode()).digest()
 
-class ParsedMsg:
-    def __init__(self ,cmd ,id_hex ,owner_ip ,as_max ,req_id):
-        self.cmd = cmd
-        self.req_id = int(req_id)
-        self.owner_ip = owner_ip
-        self.id_hex = id_hex
-        self.id = int(id_hex ,16)
-        self.as_max = as_max == 'True'
-
+    
 class ChordNode:
     def __init__(self ,id ,id_hex ,ip_list ,as_max):
-       self.id = id     
-       self.id_hex = id_hex     
+       self.id = TwoBaseId(id,id_hex)      
        self.ip_list = ip_list     
        self.as_max = as_max     
+    
+    def __str__(self) -> str:
+        d = {
+            'id_hex': self.id.hex,
+            'ip_list': self.ip_list,
+            'as_max': self.as_max
+        }
+        return json.dumps(d)
+
+    def build_from_msg(s):
+        if s == 'none':
+            return None
+        d = json.loads(s)
+        return ChordNode(int(d['id_hex'],16),d['id_hex'],d['ip_list'],d['as_max'])
+
+class TwoBaseId:
+    def __init__(self,id,id_hex):
+        self.dec = id
+        self.hex = id_hex
 
 class ChordServer:
     def __init__(self,id,DHT_name ,port ,disable_log):
@@ -160,46 +141,52 @@ class ChordServer:
         self.server : MultiThreadedServer = MultiThreadedServer(self.port ,100 ,100 ,2 ,self.create_dispatcher() , log = False)
         self.get_succ_req_cmd = 'get_succ_req'
         self.get_succ_resp_cmd = 'get_succ_resp'
-        self.ImYSucc_cmd = 'ImYSucc_cmd'
+        self.ImYSucc_cmd = 'ImYSucc'
         self.ImYPrev_cmd = 'ImYPrev'
+        self.ImYRep_cmd = 'ImYRep'
         self.outside_cmd = 'outside'
         self.confirm_cmd = 'confirm_new_succ'
+        self.new_rep_cmd = 'new_rep'
         self.busy = False
         self.busy_lock = Lock()
         self.Ft_lock = Lock()
         self.ip = get_my_ip()
         self.id_hex = None
+        self.id = None
         if id == None: 
             self.id_hex = hashlib.sha256(self.ip.encode()).hexdigest()
+            self.id = int(self.id_hex ,16)
         else:
             self.id_hex = hex(id)[2:]
-        self.id = int(self.id_hex ,16)
+            self.id = id
         self.log: list[str] = []
         self.reps = [self.ip]
         self.response ={
             self.confirm_cmd:self.rec_confirm_new_prev ,
             self.ImYSucc_cmd:self.rec_ImYSucc ,
             self.ImYPrev_cmd:self.rec_ImYPrev ,
+            self.ImYRep_cmd : self.rec_ImYRep,
             self.get_succ_req_cmd:self.rec_get_succ_req ,
             self.get_succ_resp_cmd:self.rec_get_succ_resp ,
-            self.outside_cmd: self.rec_outside_get
+            self.outside_cmd: self.rec_outside_get,
+            self.new_rep_cmd: self.rec_new_rep
         }
 
     def insert_as_first(self):
         num = self.id + self.max_id
         num_hex = hex(num)[2:]
-        self.Ft[0] = ChordNode(num ,num_hex ,[self.ip] ,as_max=True)
-        self.Ft[1] = ChordNode(num ,num_hex ,[self.ip] ,as_max=True)
+        self.Ft[0] = ChordNode(num ,num_hex ,self.reps ,as_max=True)
+        self.Ft[1] = ChordNode(num ,num_hex ,self.reps ,as_max=True)
         for i in range(2 ,len(self.Ft)):
             self.Ft[i] = self.Ft[1]
 
     def insert(self ,ips):
         node = self.ask_succ(ips ,self.id_hex ,False)
         prev_node, succ_node = None
-        if node.id_hex == self.id_hex:
+        if node.id.hex == self.id_hex:
             prev_node, succ_node = self.insert_rep(ips,node)
         else:
-            prev_node, succ_node = self.insert_new_node(ips,node)
+            prev_node, succ_node = self.insert_new_node(node)
         self.Ft[0] = prev_node
         for i in range(1 ,len(self.Ft)):
             self.Ft[i] = succ_node
@@ -207,37 +194,26 @@ class ChordServer:
     def insert_new_node(self,ips,succ_node):
         response = 'Busy'
         while response == 'Busy':
-            for _ in range(10):
-                response , prev_node = self.ImYPrev(succ_node)
-                if response == 'Busy':
-                    self.update_log(f'{succ_node.ip} is busy')
-                    sleep(randint(1 ,5))
-                    succ_node = self.ask_succ(ips ,self.id_hex ,False)
-                else:
-                    break
-        self.ImYSucc(prev_node.ip)
-        self.confirm_new_prev(succ_node.ip)
+            response , prev_node = self.ImYPrev(succ_node)
+            if response != 'Busy':
+                break
+            self.update_log(f'{succ_node.ip} is busy')
+            sleep(randint(1 ,5))
+            succ_node = self.ask_succ(ips ,self.id_hex ,False)
+        self.ImYSucc(prev_node)
+        self.confirm_new_prev(succ_node)
+        return prev_node, succ_node
 
-    def insert_rep(self,ips,rep_node):
-        node = self.ask_succ(ips ,self.id_hex ,False)
+    def insert_rep(self,rep_node: ChordNode):
         response = 'Busy'
         while response == 'Busy':
-            for _ in range(10):
-                if node.id_hex == self.id_hex:
-                    response, prev_node, succ_node = self.ImYRep(node)
-                else:
-                    node = self.ask_succ(ips ,self.id_hex ,False)
-                    response , prev_node = self.ImYPrev(node)
-                if response == 'Busy':
-                    self.update_log(f'{succ_node.ip} is busy')
-                    sleep(randint(1 ,5))
-                else:
-                    break
-        self.ImYSucc(prev_node.ip)
-        self.confirm_new_prev(succ_node.ip)
-        self.Ft[0] = prev_node
-        for i in range(1 ,len(self.Ft)):
-            self.Ft[i] = succ_node
+            response, prev_node, succ_node = self.ImYRep(rep_node)
+            if response != 'Busy':
+                break
+            self.update_log(f'{succ_node.ip} is busy')
+            sleep(randint(1 ,5))
+        self.new_rep(rep_node)
+        return prev_node, succ_node
 
     def start(self):
         Thread(target= ChordServer.sleeping_log , args=[self] ,daemon = True).start()
@@ -271,8 +247,8 @@ class ChordServer:
                 self.update_log(f'Bad Request: {msg}')
                 self.update_log(str(e))
                 return
-            self.update_log(f'recived: cmd:{parsed_msg.cmd} req_id:{parsed_msg.req_id} id:{parsed_msg.id_hex} owner:{parsed_msg.owner_ip} as_max:{str(parsed_msg.as_max)}')
-            self.response[parsed_msg.cmd](parsed_msg ,socket_client ,addr_client)
+            self.update_log(f'recived: {parsed_msg}')
+            self.response[parsed_msg['cmd']](parsed_msg ,socket_client ,addr_client)
         return dispatcher
 
     def get_some_node(self):
@@ -326,21 +302,21 @@ class ChordServer:
 
 
 
-    def succ_who(self ,k ,as_max) -> ChordNode:
+    def succ_who(self ,id:TwoBaseId,as_max) -> tuple[bool,ChordNode]:
         res_id = self.id
         res_hex = self.id_hex
-
+        k = id.dec
         if as_max:
             k = k - self.max_id
             res_id += self.max_id
             res_hex = hex(res_id)[2:]
         
         #is me
-        if (self.Ft[0].id < k or as_max or self.Ft[0].id > self.id) and k <= self.id:
-            return ChordNode(res_id ,res_hex ,self.ip ,as_max)
+        if (self.Ft[0].id.dec < k or as_max or self.Ft[0].id.dec > self.id) and k <= self.id:
+            return True,ChordNode(res_id ,res_hex ,self.reps ,as_max)
         #is my succesor
-        if self.id < k <= self.Ft[1].id:
-            return self.Ft[1]
+        if self.id < k <= self.Ft[1].id.dec:
+            return False,self.Ft[1]
         
         # search in the table
         less_than_me = False
@@ -349,34 +325,35 @@ class ChordServer:
             k += self.max_id
         
         for i in range(2 ,len(self.Ft)):
-            if ((i == (len(self.Ft) - 1)) or (self.Ft[i].id <= k < self.Ft[i + 1].id)):
+            if ((i == (len(self.Ft) - 1)) or (self.Ft[i].id.dec <= k < self.Ft[i + 1].id)):
                 if less_than_me and self.Ft[i].as_max:
-                    num = self.Ft[i].id - self.max_id
+                    num = self.Ft[i].id.dec - self.max_id
                     num_hex = hex(num)[2:]
-                    return ChordNode(num ,num_hex ,self.Ft[i].ip ,False)
+                    return False,ChordNode(num ,num_hex ,self.Ft[i].ip_list ,False)
                 else:
-                    return self.Ft[i]
+                    return False,self.Ft[i]
         
 
-    def succ(self ,k ,owner_ip ,as_max ,req_id):
-        who = self.succ_who(k ,as_max)
-        self.update_log(f'who id:{who.id_hex} ip:{who.ip} as_max:{who.as_max}')
-        if who.ip == self.ip:
+    def succ(self ,id: TwoBaseId ,owner_ip ,as_max ,req_id):
+        mine, who = self.succ_who(id,as_max)
+        self.update_log(f'who id:{who.id.hex} ip:{who.ip_list} as_max:{who.as_max}')
+        if mine:
             if(owner_ip == self.ip):
                 if as_max:
                     self.update_log('my self as_max')
                     holder = self.state_storage.get_state(req_id)
                     holder.desired_data = who
                     holder.hold_event.set()
-                    return
+                    return True
                 else:
-                    return 'Me'
-            self.update_log(f'accepting {hex(k)[2:]}')
-            self.accept_succ(owner_ip ,req_id ,who.id_hex ,who.as_max)
+                    return True
+            self.update_log(f'accepting {id.hex}')
+            self.accept_succ(owner_ip ,req_id ,who)
         else:
-            self.update_log(f'redirecting request to {who.id_hex}:{who.ip}')
-            msg = ChordServer.create_msg(self.get_succ_req_cmd ,hex(k)[2:] ,owner_ip ,who.as_max ,req_id)
-            self.send_til_success([who.ip] ,msg ,'redirect',self.port)
+            self.update_log(f'redirecting request to {who.id.hex}:{who.ip_list}')
+            msg = ChordServer.create_msg(cmd = self.get_succ_req_cmd ,id_hex = id.hex ,owner_ip = owner_ip ,as_max = who.as_max ,req_id = req_id)
+            self.send_til_success(who.ip_list ,msg ,'redirect',self.port)
+            return False
 
 
     def MaintainFt(self):
@@ -384,123 +361,127 @@ class ChordServer:
             sleep(5)   
             for i in range(1 ,len(self.Ft)):
                 current = self.id + 2**(i - 1)
-                who = self.succ_who(current ,False)
-                if(who.ip != self.ip):
+                mine, who = self.succ_who(current ,False)
+                if mine:
                     current_hex = hex(current)[2:]
-                    who = self.ask_succ([who.ip] ,current_hex ,who.as_max)
+                    who = self.ask_succ(who.ip_list ,current_hex ,who.as_max)
                 with self.Ft_lock:
                     self.Ft[i] = who
             self.update_log()
-
-
-
             
-    def confirm_new_prev(self ,succ_ip):
-        msg = ChordServer.create_msg(self.confirm_cmd ,self.id_hex ,self.ip ,False ,0)
+    def confirm_new_prev(self ,succ:ChordNode):
+        msg = ChordServer.create_msg(cmd = self.confirm_cmd ,id_hex = self.id_hex , owner_ip = self.ip)
         self.update_log('starting to send (confirm)')
-        self.send_til_success([succ_ip] ,msg ,'confirm',self.port)
+        self.send_til_success(succ.ip_list ,msg ,'confirm',self.port)
 
-    def rec_confirm_new_prev(self ,msg:ParsedMsg ,socket_client ,addr):
+    def rec_confirm_new_prev(self ,msg:dict ,socket_client ,addr):
         self.update_log('inside rec_confirm')
-        with self.Ft_lock:
-            res_id = msg.id
-            res_as_max = msg.as_max
-            if msg.id > self.id:
-                res_id += self.max_id
-                res_as_max = True
+        res_id_hex = msg['id_hex']
+        res_id = int(res_id_hex,16)
+        res_as_max = False
+        if res_id > self.id:
+            res_id += self.max_id
             res_id_hex = hex(res_id)[2:]
-            self.Ft[0] = ChordNode(res_id ,res_id_hex ,msg.owner_ip ,res_as_max)
+            res_as_max = True
+
+        with self.Ft_lock:
+            self.Ft[0] = ChordNode(res_id ,res_id_hex ,[msg['owner_ip']] ,res_as_max)
+        
         with self.busy_lock:
             self.busy = False
+
         socket_client.send('Ok'.encode())
         socket_client.close()
         self.update_log('confirmed new prev')
         
     
-    def rec_outside_get(self ,msg:ParsedMsg ,socket_client ,addr):
+    def rec_outside_get(self ,msg ,socket_client ,addr):
         socket_client.close()
-        print(f'recived outside req for {msg.id_hex}')
-        self.update_log(f'start rec outside_get {msg.id_hex}')
-        # {type:'logger' , proto:'chord'}]   
+        print(f'recived outside req for {msg["id_hex"]}')
+        self.update_log(f'start rec outside_get {msg["id_hex"]}')
         print(f'antes de insertar el estado')
         holder : ThreadHolder = self.state_storage.insert_state()
         print(f'antes del while')
+        id = TwoBaseId(int(msg['id_hex'],16),msg['id_hex'] )
         while not holder.desired_data:
-            me = self.succ(msg.id ,self.ip ,False ,holder.id)
-            self.update_log(f'me:{str(me)}')
-            print(f'me:{str(me)}')
-            if not me:
+            mine = self.succ(id,self.ip ,False ,holder.id)
+            self.update_log(f'me:{str(mine)}')
+            print(f'me:{str(mine)}')
+            if not mine:
                 self.update_log('starting to wait')
                 print('starting to wait')
                 holder.hold_event.wait(5)
             else:
-                holder.desired_data = ChordNode(self.id ,self.id_hex ,self.ip ,False)
+                holder.desired_data = ChordNode(self.id ,self.id_hex ,self.reps ,False)
             if not holder.desired_data:
-                self.update_log(f'failed to get succ of {msg.id}')
+                self.update_log(f'failed to get succ of {msg["id_hex"]}')
                 print('starting to wait')
         self.state_storage.delete_state(holder.id)
         self.update_log('responding to outside')
+        self.response_to_outside(holder.desired_data.ip_list,msg['req_id'])
+
+    def response_to_outside(self,ip_list,req_id):
+        self.update_log('responding to outside')
         print('starting to respond')
-        # type: LOGGER
-        # proto: CHORD_RESPONSE
-        # IP: [Replicas del sucesor]
         msg_dict = {
             'type': util.LOGGER ,
             'proto': util.CHORD_RESPONSE ,
-            'IP':[holder.desired_data.ip] ,
-            'id_request':msg.req_id
+            'IP':ip_list,
+            'id_request':req_id
         }
-        socket_client = socket(AF_INET, SOCK_STREAM)
-        socket_client.connect(('127.0.0.1', util.PORT_GENERAL_LOGGER))
-        socket_client.send(util.encode(msg_dict))
-        socket_client.close()
+        self.send_soft(['127.0.0.1'],util.encode(msg_dict),'outside_resp',util.PORT_GENERAL_LOGGER,have_recv = False)
         self.update_log(f'end outside req')
-        print(f'end outside req')
 
-    def rec_get_succ_req(self ,msg:ParsedMsg ,socket_client ,addr):
+    def rec_get_succ_req(self ,msg ,socket_client ,addr):
         socket_client.send('Ok'.encode())
-        self.update_log(f'start rec get_succ_req {msg.id_hex}')
-        self.succ(msg.id ,msg.owner_ip ,msg.as_max ,msg.req_id)
         socket_client.close()
+        self.update_log(f'start rec get_succ_req {msg["id_hex"]}')
+        id = TwoBaseId(int(msg["id_hex"],16),msg['id_hex'])
+        self.succ(id,msg['owner_ip'] ,msg['as_max'] ,msg['req_id'])
         self.update_log('end rec get_succ_req')
 
-    def rec_get_succ_resp(self ,msg:ParsedMsg ,socket_client ,addr):
+    def rec_get_succ_resp(self ,msg ,socket_client ,addr):
         self.update_log('start rec get_succ_resp')
-        holder = self.state_storage.get_state(msg.req_id)
-        holder.desired_data = ChordNode(msg.id ,msg.id_hex ,addr[0] ,msg.as_max)
+        holder = self.state_storage.get_state(msg['req_id'])
+        holder.desired_data = ChordNode.build_from_msg(msg['node'])
         holder.hold_event.set()
-        self.state_storage.delete_state(msg.req_id)
+        self.state_storage.delete_state(msg['req_id'])
         socket_client.send('Ok'.encode())
         socket_client.close()
         self.update_log('end rec get_succ_resp')
 
-    def ImYSucc(self ,prev_ip):
-        msg = ChordServer.create_msg(self.ImYSucc_cmd ,self.id_hex ,self.ip ,False ,0)
+    def ImYSucc(self ,prev: ChordNode):
+        msg = ChordServer.create_msg(cmd = self.ImYSucc_cmd ,id_hex = self.id_hex ,owner_ip = self.ip)
         self.update_log('starting to send (ImYSucc)')
-        self.send_til_success([prev_ip] ,msg ,'ImYSucc',self.port)
+        self.send_til_success(prev.ip_list ,msg ,'ImYSucc',self.port)
         
 
-    def rec_ImYSucc(self ,msg:ParsedMsg ,socket_client ,addr):
+    def rec_ImYSucc(self ,msg ,socket_client ,addr):
         self.update_log('start rec ImYSucc')
-        res_id = msg.id
+        res_hex = msg['id_hex']
+        res_id = int(res_hex,16)
+        as_max = False
         #Si el nuevo sucesor es nuevo minimo y yo soy maximo
-        if msg.id < self.id:
+        if res_id < self.id:
             res_id += self.max_id
-        res_hex = hex(res_id)[2:]
+            res_hex = hex(res_id)[2:]
+            as_max = True
         with self.Ft_lock:
-            self.Ft[1] = ChordNode(res_id ,res_hex ,msg.owner_ip ,msg.id < self.id)
+            self.Ft[1] = ChordNode(res_id ,res_hex ,[msg['owner_ip']] ,as_max)
         socket_client.send('Ok'.encode())
         socket_client.close()
         self.update_log('end rec ImYSucc')
 
-    def ImYPrev(self ,succ_ip):
-        msg = ChordServer.create_msg(self.ImYPrev_cmd ,self.id_hex ,self.ip ,False ,0)
+    def ImYPrev(self ,succ: ChordNode):
+        msg = ChordServer.create_msg(cmd = self.ImYPrev_cmd ,
+                                     id_hex = self.id_hex ,
+                                     owner_ip = self.ip)
         self.update_log('starting to send (ImYPrev)')
-        response = self.send_til_success([succ_ip] ,msg ,'ImYPrev',self.port)
-        arr = response.decode().split(',')
-        return arr[0] , ChordNode(int(arr[1] ,16) ,arr[1] ,arr[2] ,arr[3] == 'True')
+        response = self.send_til_success(succ.ip_list ,msg ,'ImYPrev',self.port)
+        arr = response.split(',')
+        return arr[0] , ChordNode.build_from_msg(arr[1])
 
-    def rec_ImYPrev(self ,msg:ParsedMsg ,socket_client ,addr):
+    def rec_ImYPrev(self ,msg ,socket_client ,addr):
         self.update_log('start rec ImYPrev')
         busy = None
         with self.busy_lock:
@@ -508,20 +489,23 @@ class ChordServer:
             if not self.busy:
                 self.busy = True
         if busy:
-            socket_client.send('Busy,0,none,none'.encode()) 
+            socket_client.send('Busy,none'.encode()) 
         else:
             result = None
             with self.Ft_lock:
                 result = self.Ft[0]
+            msg_id = int(msg['id_hex'],16)
+            res_id = result.id.dec
+            res_id_hex = result.id.hex
             res_as_max = result.as_max
-            res_id = result.id
             # Si el que se va a insertar es nuevo maximo
-            if msg.id > self.id:
-                res_as_max = False
+            if msg_id > self.id:
                 res_id -= self.max_id
-            res_id_hex = hex(res_id)[2:]
+                res_id_hex = hex(res_id)[2:]
+                res_as_max = False
+            s_res = str(ChordNode(res_id,res_id_hex,result.ip_list,res_as_max))
             # (Busy|Ok) ,id ,ip
-            socket_client.send(f'Ok,{res_id_hex},{result.ip},{res_as_max}'.encode()) 
+            socket_client.send(f'Ok,{s_res}'.encode()) 
         socket_client.close()
         self.update_log('end rec ImYPrev')
 
@@ -534,17 +518,37 @@ class ChordServer:
     #  - Si el mas actual es mas reciente que tu pidele la tabla
     #    * Buscar la forma de serializar la tabla
 
-    def new_rep(self,rep_ip):
-        pass
+    def new_rep(self,rep_node: ChordNode):
+        for rep in rep_node.ip_list:
+            msg = ChordServer.create_msg(self.new_rep_cmd,0,self.ip,False,0)
+            self.send_soft([rep],msg,'new_rep',self.port,5)
 
-    def rec_new_rep(self ,msg:ParsedMsg ,socket_client ,addr):
-        pass
+    def rec_new_rep(self ,msg ,socket_client ,addr):
+        if msg['owner_ip'] not in self.reps:
+            self.reps.append(msg['owner_ip'])
 
-    def ImYRep(self, rep_ip):
-        pass
+    def ImYRep(self, rep_node: ChordNode):
+        msg = ChordServer.create_msg(cmd = self.ImYRep_cmd ,owner_ip = self.ip)
+        self.update_log('starting to send (ImYRep)')
+        response = self.send_til_success(rep_node.ip_list ,msg ,'ImyRep',self.port)
+        arr = response.split(',')
+        return arr[0], ChordNode.build_from_msg(arr[1]),ChordNode.build_from_msg(arr[2])
 
-    def rec_ImYRep(self ,msg:ParsedMsg ,socket_client ,addr):
-        pass
+    def rec_ImYRep(self ,msg ,socket_client :socket,addr):
+        busy = False
+        with self.busy_lock:
+            busy = self.busy
+        if busy:
+            socket_client.send('Busy,none,none')
+        else:
+            prev , succ = None
+            with self.Ft_lock:
+                prev = self.Ft[0]
+                succ = self.Ft[1]
+            if msg['owner_ip'] not in self.reps:
+                self.reps.append(msg['owner_ip'])
+            socket_client.send(f'Ok,{str(prev)},{str(succ)}')
+        socket_client.close()
 
     def register_in_entry(self):
         msg_dict = {
@@ -556,8 +560,9 @@ class ChordServer:
 
 
 
-    def accept_succ(self ,owner_ip ,req_id ,id ,as_max):
-        msg = ChordServer.create_msg(self.get_succ_resp_cmd ,id ,self.ip ,as_max ,req_id)
+    def accept_succ(self ,owner_ip ,req_id ,node:ChordNode):
+        s_node = str(ChordNode(None,node.id.hex,self.reps,node.as_max))
+        msg = ChordServer.create_msg(cmd = self.get_succ_resp_cmd ,node = s_node,req_id = req_id)
         self.update_log('starting to send (accept)')
         self.send_til_success([owner_ip] ,msg ,'accept',self.port)
 
@@ -565,7 +570,7 @@ class ChordServer:
         holder = self.state_storage.insert_state()
         while True: 
             for _ in range(10):
-                msg = ChordServer.create_msg(self.get_succ_req_cmd ,id_hex ,self.ip ,as_max ,holder.id)
+                msg = ChordServer.create_msg(cmd = self.get_succ_req_cmd ,id_hex = id_hex ,owner_ip = self.ip ,as_max = as_max ,req_id = holder.id)
                 self.update_log(f'starting to send (ask_succ to {ips} for {id_hex} as_max:{str(as_max)})')
                 self.send_til_success(ips ,msg ,'ask_succ',self.port)
                 self.update_log(f'waiting for response in ask_succ')
@@ -580,51 +585,33 @@ class ChordServer:
         return holder.desired_data
     
     def build_insert_response(self):
-        # # # type: Chord(Utils)
-        # proto: NEW_LOGGER_RESPONSE(Utils)
-        # sucesors: [los ips de los sucesores]
-        # siblings: [lista de replicas]
-        # chord_id: mi sha
         msg_dict = {
             'type': util.CHORD ,
             'proto': util.NEW_LOGGER_REQUEST,
-            'sucesors': [self.Ft[1].ip] ,
+            'sucesors': self.Ft[1].ip_list,
             'siblings':[] ,
             'chord_id': self.id_hex
         }
         return json.dumps(msg_dict)
 
 
-    def parse_msg(self ,raw_msg:str) -> ParsedMsg:
-        # # type: LOGGER
-        # proto: CHORD_REQUEST
-        # hash: (el nick para hashear) 
-        # id_req: (int)
-        
+    def parse_msg(self ,raw_msg:str):
         msg_dict = util.decode(raw_msg)
-        # print('dict parsed')
-        result = None
         if msg_dict['type'] == util.LOGGER:
-            # print('is logger request')
             print(f'recived outside req for {msg_dict["hash"]}')
             nick_hash = hashlib.sha256(msg_dict['hash'].encode()).hexdigest()
             print(nick_hash)
-            # nick_hash = int(msg_dict['hash'])
-            result = ParsedMsg(self.outside_cmd ,nick_hash ,'0' ,'False' ,msg_dict['id_request'])
-        else:
-            # print('is intern request')
-            arr = msg_dict['content'].split(',')
-            result = ParsedMsg(arr[0] , arr[1] , arr[2] , arr[3] ,arr[4])
-        # print('parsed')
-        return result
+            msg_dict = {
+                'cmd': self.outside_cmd,
+                'id_hex': nick_hash,
+                'req_id': msg_dict['id_request']
+            }
+        return msg_dict
 
 
-    def create_msg(cmd:str ,k:int , owner_ip:str , as_max:bool , req_id:int):
-        msg = {
-            'type': util.CHORD_INTERNAL ,
-            'content': ','.join([str(cmd) ,str(k) ,str(owner_ip) ,str(as_max) ,str(req_id) ,])
-        }
-        return json.dumps(msg)
+    def create_msg(**kwarg):
+        kwarg['type'] = util.CHORD_INTERNAL 
+        return json.dumps(kwarg)
 
     def send_til_success(self ,ips ,msg ,req_name ,port):
         response = None
@@ -635,7 +622,7 @@ class ChordServer:
                 sleep(2)
         return response
     
-    def send_soft(self,ips ,msg ,req_name ,port, try_count):
+    def send_soft(self,ips ,msg ,req_name ,port, try_count, have_recv = False):
         response = None
         for _ in try_count:
             response = self.send_and_close(ips ,msg ,port)
@@ -646,7 +633,7 @@ class ChordServer:
                 break
         return response
 
-    def send_and_close(self ,ips ,msg: str, port):
+    def send_and_close(self ,ips ,msg: str, port,have_recv = True):
         response = None
         shuffle(ips)
         for ip in ips:
@@ -655,8 +642,11 @@ class ChordServer:
                     s = socket(AF_INET ,SOCK_STREAM)
                     self.update_log(f'connecting to {ip}:{port}')
                     s.connect((ip ,port))            
-                    s.send(msg.encode())            
-                    response = s.recv(15000)            
+                    s.send(msg.encode()) 
+                    if have_recv:           
+                        response = s.recv(15000)
+                    else:
+                        response = 'Ok'
                     s.close()
                     if not (response == None):
                         if ip in self.request_count.keys():
