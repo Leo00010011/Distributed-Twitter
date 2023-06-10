@@ -40,6 +40,7 @@ def GetTokenLogIn(alias, password):
         print(user)
         if  user:
             if user.password == password:
+                print('P')
                 return CreateToken(user)
         return False
     except:
@@ -51,6 +52,10 @@ def CreateToken(user):
     Si al generar el token este estuviera asignado, se genera otro, hasta
     que no haya coincidencia.
     '''
+    try:
+        return Token.select().where(Token.user_id == user).get().token
+    except:
+        pass
     token = gen_token(64)
     while CheckToken(token):
         token = gen_token(64)

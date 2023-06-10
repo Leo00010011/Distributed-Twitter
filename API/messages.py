@@ -24,7 +24,7 @@ def wait_get_delete(storage, state):
     state.hold_event.wait(10)
     state = storage.get_state(state.id)
     print('dentro del wait get delete')
-    print(state)
+    print(state.desired_data)
     storage.delete_state(state.id)
 
     return state

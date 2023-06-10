@@ -118,6 +118,8 @@ class TweeterServer(MultiThreadedServer):
                 self.create_follow(socket_client, addr_client, data_dict,storage)
             elif proto_rqst == RETWEET_REQUEST: 
                 self.create_retweet(socket_client, addr_client, data_dict,storage)
+            elif proto_rqst == GET_TWEET:
+                self.tweet_check(socket_client, addr_client, data_dict, storage)
             elif proto_rqst == FEED_REQUEST:
                 self.feed_get(socket_client, addr_client, data_dict, storage)
             elif proto_rqst == PROFILE_DATA_REQUEST:
@@ -333,6 +335,7 @@ class TweeterServer(MultiThreadedServer):
         socket_client.close()    
         #pedir un evento para m\'aquina de estado 
         nick = data_dict['nick']
+        id_request = data_dict['id_request']
         state = do_chord_sequence(storage, nick)
         print('Tweet Request CHORD', state)
         print('Desired', state.desired_data)
@@ -351,7 +354,7 @@ class TweeterServer(MultiThreadedServer):
                 #reenviar mensaje de autenticacion
                 try:
                     state.desired_data['type'] = LOGGER
-                    state.desired_data['id_request'] = data_dict['id_request']
+                    state.desired_data['id_request'] = id_request
                     print("DATA ENVIADA AL ENTRY:", state.desired_data)
                     send_and_close(addr_client[0],PORT_GENERAL_ENTRY, state.desired_data)
                     return
@@ -363,7 +366,7 @@ class TweeterServer(MultiThreadedServer):
                 'proto': data_dict['proto'] +1,
                 'succesed': False,
                 'error': 'Something went wrong in the network connection',
-                'id_request':  data_dict['id_request']
+                'id_request':  id_request
         }
         send_and_close(addr_client[0], PORT_GENERAL_ENTRY, data)
 
@@ -485,26 +488,28 @@ class TweeterServer(MultiThreadedServer):
             
             if retweets:
                 for t in retweets:
-                    print("RETWEETTS???")
-                    state = do_chord_sequence(storage, t.nick)
-
+                    print("RETWEETS???")
+                    print()
+                    state = do_chord_sequence(storage, t['nick'])
+                    
                     if state and state.desired_data:
                         #Escribirle al server que tiene al usuario
                         state2 = storage.insert_state()
                         data = {
                         'type': TWEET,
                         'proto': GET_TWEET,
-                        'nick': t.nick,
-                        'date': t.tweet_date,
+                        'nick': t['nick'],
+                        'date': t['date_tweet'],
                         "id_request": state2.id,
                         }
-                    
+                        print('senda and close del retweet')
                         send_and_close(state.desired_data['IP'][0], PORT_GENERAL_LOGGER, data)
                         state = wait_get_delete(storage, state2)
-
+                        print('state ', state.desired_data)
                         if state and state.desired_data:
-                            if state.desired_data['succesed']:
-                                data_profile['retweets'].append(state.desired_data['data_tweet'])
+                            if state.desired_data['exist']:
+                                t['text'] = state.desired_data['text']
+                                data_profile['retweets'].append(t)
             
             over = len(tweets)< 10 and len(retweets)<10 
             msg =  profile_response_msg(True, None, id_request, data_profile, over)       
@@ -560,42 +565,39 @@ class TweeterServer(MultiThreadedServer):
           
                  
     def create_retweet(self, socket_client, addr_client, data_dict, storage):
-        
+        print('create_retweet')
         socket_client.close()
         id_request = data_dict['id_request']
         data = None
-
+        print('create_retweet 2')
         if view.CheckToken(data_dict['token'], data_dict['nick']):
-                
-                state = do_chord_sequence(storage, data_dict['nick_profile'])
-                
+            
+            print('Chequeado')
+            state = do_chord_sequence(storage, data_dict['nick_profile'])
+            
+            if state and state.desired_data:
+                #Escribirle al server que tiene al usuario
+
+                state2 = storage.insert_state()
+                print('state2', state2.desired_data)
+                data = check_tweet_request_msg(data_dict['nick_profile'], data_dict['date'], state2.id)
+                print('data', data)
+                send_and_close(state.desired_data['IP'][0], PORT_GENERAL_LOGGER, data)
+                print('data', data)
+                state = wait_get_delete(storage, state2)
+                        
                 if state and state.desired_data:
-                    #Escribirle al server que tiene al usuario
+                    print('PINGAAAAAAAAAAAAAAA')
+                    print(state.desired_data)
 
-                    state2 = storage.insert_state()
-                    data = check_tweet_request_msg(data_dict['nick_profile'], data_dict['date'], state2.id)
-                    send_and_close(state.desired_data['IP'][0], PORT_GENERAL_LOGGER, data)
-                    state = wait_get_delete(storage, state2)
-                
-
-                    data = {
-                            'type': TWEET,
-                            'proto': RETWEET_RESPONSE,
-                            'id_request':data_dict['id_request'],
-                            'succesed': True,
-                            'error':None
-                    }
-                   
-                    if state and state.desired_data:
-
-                        if state.desired_data['exist']:
-                            if  view.CreateReTweet(data_dict['nick'], data_dict['nick2'], data_dict['date']):
-                                data = retweet_response_msg(True, None, id_request)
-                                send_and_close(addr_client[0], PORT_GENERAL_LOGGER, data)   
-                                return
-                    data = retweet_response_msg(False, 'Error trying to retweet', id_request)
-                else:
-                    data = retweet_response_msg(False, 'Network error', id_request)
+                    if state.desired_data['exist']:
+                        if  view.CreateReTweet(data_dict['nick'], data_dict['nick_profile'], data_dict['date']):
+                            data = retweet_response_msg(True, None, id_request)
+                            send_and_close(addr_client[0], PORT_GENERAL_LOGGER, data)   
+                            return
+                data = retweet_response_msg(False, 'Error trying to retweet', id_request)
+            else:
+                data = retweet_response_msg(False, 'Network error', id_request)
                   
         else:
             data = retweet_response_msg(False, 'User is not logged in', id_request)
@@ -642,19 +644,24 @@ class TweeterServer(MultiThreadedServer):
     def tweet_check(self, socket_client, addr_client, data_dict,storage):
         
         socket_client.close()
-
+        print('Tweet check')
+        print(data_dict)
         id_request = data_dict['id_request']
         nick = data_dict['nick']
-        date = data_dict.get['date']
-        tweet = view.ChechTweet(nick, date)
+        date = data_dict['date']
+        tweet = view.CheckTweet(nick, date)
+        print('Check Teewt hecho')
         
         if tweet:
+            print('Hay Tweet')
             data = check_tweet_response_msg(True, id_request, tweet.text)
-            
+            print(data)
         else: 
+            print('No hay Tweet')
             data = check_tweet_response_msg(False, id_request, None)
-        
+        print('send and close')
         send_and_close(addr_client[0], PORT_GENERAL_LOGGER, data)
+        print('fin del send and close')
         
     def recent_publish(self, socket_client, addr_client, data_dict,storage):
         

@@ -228,6 +228,7 @@ class Client():
         '''
         Publicar retweet
         '''
+        print('ANes de try send')
         
         msg = {
             'type': CLIENT,
@@ -239,6 +240,7 @@ class Client():
         }
         
         good, recv_data = self.try_send_recv(msg)
+        print('Luego del try send')
         if not good:
             return False, str(recv_data)
         
