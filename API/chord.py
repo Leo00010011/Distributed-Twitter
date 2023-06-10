@@ -136,10 +136,10 @@ class ParsedMsg:
         self.as_max = as_max == 'True'
 
 class ChordNode:
-    def __init__(self ,id ,id_hex ,ip ,as_max):
+    def __init__(self ,id ,id_hex ,ip_list ,as_max):
        self.id = id     
        self.id_hex = id_hex     
-       self.ip = ip     
+       self.ip_list = ip_list     
        self.as_max = as_max     
 
 class ChordServer:
@@ -153,7 +153,6 @@ class ChordServer:
         self.Ft: list[ChordNode] = [None]*floor(log2(self.max_id + 1))
         self.state_storage = StateStorage()
         self.port = port
-
         self.entry_points = []
         with open('entrys.txt' , 'r') as ft:
             for ip in ft.read().split(sep='\n'):
@@ -168,13 +167,15 @@ class ChordServer:
         self.busy = False
         self.busy_lock = Lock()
         self.Ft_lock = Lock()
-        #TODO gen ID
         self.ip = get_my_ip()
-        self.id = id
-        self.id_hex = hex(self.id)[2:]
-        # self.id_hex = hashlib.sha256(self.ip.encode()).hexdigest()
-        # self.id = int(self.id_hex ,16)
+        self.id_hex = None
+        if id == None: 
+            self.id_hex = hashlib.sha256(self.ip.encode()).hexdigest()
+        else:
+            self.id_hex = hex(id)[2:]
+        self.id = int(self.id_hex ,16)
         self.log: list[str] = []
+        self.reps = [self.ip]
         self.response ={
             self.confirm_cmd:self.rec_confirm_new_prev ,
             self.ImYSucc_cmd:self.rec_ImYSucc ,
@@ -187,26 +188,51 @@ class ChordServer:
     def insert_as_first(self):
         num = self.id + self.max_id
         num_hex = hex(num)[2:]
-        self.Ft[0] = ChordNode(num ,num_hex ,self.ip ,as_max=True)
-        self.Ft[1] = ChordNode(num ,num_hex ,self.ip ,as_max=True)
+        self.Ft[0] = ChordNode(num ,num_hex ,[self.ip] ,as_max=True)
+        self.Ft[1] = ChordNode(num ,num_hex ,[self.ip] ,as_max=True)
         for i in range(2 ,len(self.Ft)):
             self.Ft[i] = self.Ft[1]
 
     def insert(self ,ips):
-        success = None
-        while not success:
+        node = self.ask_succ(ips ,self.id_hex ,False)
+        prev_node, succ_node = None
+        if node.id_hex == self.id_hex:
+            prev_node, succ_node = self.insert_rep(ips,node)
+        else:
+            prev_node, succ_node = self.insert_new_node(ips,node)
+        self.Ft[0] = prev_node
+        for i in range(1 ,len(self.Ft)):
+            self.Ft[i] = succ_node
+
+    def insert_new_node(self,ips,succ_node):
+        response = 'Busy'
+        while response == 'Busy':
             for _ in range(10):
-                succ_node = self.ask_succ(ips ,self.id_hex ,False)
-                response , prev_node = self.ImYPrev(succ_node.ip)
+                response , prev_node = self.ImYPrev(succ_node)
                 if response == 'Busy':
                     self.update_log(f'{succ_node.ip} is busy')
                     sleep(randint(1 ,5))
-                    continue
+                    succ_node = self.ask_succ(ips ,self.id_hex ,False)
                 else:
-                    success = True
                     break
-            if success:
-                break
+        self.ImYSucc(prev_node.ip)
+        self.confirm_new_prev(succ_node.ip)
+
+    def insert_rep(self,ips,rep_node):
+        node = self.ask_succ(ips ,self.id_hex ,False)
+        response = 'Busy'
+        while response == 'Busy':
+            for _ in range(10):
+                if node.id_hex == self.id_hex:
+                    response, prev_node, succ_node = self.ImYRep(node)
+                else:
+                    node = self.ask_succ(ips ,self.id_hex ,False)
+                    response , prev_node = self.ImYPrev(node)
+                if response == 'Busy':
+                    self.update_log(f'{succ_node.ip} is busy')
+                    sleep(randint(1 ,5))
+                else:
+                    break
         self.ImYSucc(prev_node.ip)
         self.confirm_new_prev(succ_node.ip)
         self.Ft[0] = prev_node
@@ -366,14 +392,6 @@ class ChordServer:
                     self.Ft[i] = who
             self.update_log()
 
-    def send_til_success(self ,ips ,msg ,req_name ,port):
-        response = None
-        while not response:
-            response = self.send_and_close(ips ,msg ,port)
-            if not response:
-                self.update_log(f'failed to send {req_name} to {ips}:{port}')
-                sleep(2)
-        return response
 
 
             
@@ -507,6 +525,27 @@ class ChordServer:
         socket_client.close()
         self.update_log('end rec ImYPrev')
 
+    # Random entre actualizar la tabla o pedriselo al resto
+    # Actualizar la tabla ya esta
+    # Pedriselo al resto:
+    #  - Pedir horas de actualizacion y aprovechar la respuesta para que te diga las replicas que conoce
+    #       * Llevar la hora de la ultima actualizacion real
+    #    * Aprovechar y actualizar el conteo de vivos
+    #  - Si el mas actual es mas reciente que tu pidele la tabla
+    #    * Buscar la forma de serializar la tabla
+
+    def new_rep(self,rep_ip):
+        pass
+
+    def rec_new_rep(self ,msg:ParsedMsg ,socket_client ,addr):
+        pass
+
+    def ImYRep(self, rep_ip):
+        pass
+
+    def rec_ImYRep(self ,msg:ParsedMsg ,socket_client ,addr):
+        pass
+
     def register_in_entry(self):
         msg_dict = {
             'type': util.CHORD ,
@@ -587,6 +626,26 @@ class ChordServer:
         }
         return json.dumps(msg)
 
+    def send_til_success(self ,ips ,msg ,req_name ,port):
+        response = None
+        while not response:
+            response = self.send_and_close(ips ,msg ,port)
+            if not response:
+                self.update_log(f'failed to send {req_name} to {ips}:{port}')
+                sleep(2)
+        return response
+    
+    def send_soft(self,ips ,msg ,req_name ,port, try_count):
+        response = None
+        for _ in try_count:
+            response = self.send_and_close(ips ,msg ,port)
+            if not response:
+                self.update_log(f'failed to send {req_name} to {ips}:{port}')
+                sleep(2)
+            else:
+                break
+        return response
+
     def send_and_close(self ,ips ,msg: str, port):
         response = None
         shuffle(ips)
@@ -613,9 +672,11 @@ class ChordServer:
         return response
 
 
+
+
 #id = int(input())
-server = ChordServer('log',15000,'file')
-server.start()
+# server = ChordServer('log',15000,'file')
+# server.start()
 
 
 
