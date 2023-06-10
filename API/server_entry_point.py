@@ -762,10 +762,11 @@ class EntryPointServerTheaded(MultiThreadedServer):
 
     def feed_request_from_client(self, id:int,task: tuple[socket.socket,object],event:Event, storage, data: dict):
         
+        print('FEEEEEED from clients')
         token = data['token']
         nick = data['nick']        
 
-        state = storage.insert_state()
+        state = storage.insert_state()        
         message = {
             'type': ENTRY_POINT,
             'proto': FEED_REQUEST,
@@ -773,8 +774,10 @@ class EntryPointServerTheaded(MultiThreadedServer):
             'nick': nick,            
             'id_request': state.id
         }
+        print(message)
 
         good, error = self.try_send_logger(message)
+        print('Llego al entry la respuesta')
         if not good:
             msg = {
                 'type': ENTRY_POINT,

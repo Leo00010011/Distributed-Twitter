@@ -175,16 +175,16 @@ def CreateFollow(nick1,nick2):
     except:
         return False 
 
-def GetProfileRange(nick, offset, limit):
-    print(nick)
+def GetProfileRange(nick_1, offset, limit):
+    print(nick_1)
     tweet = []
     retweet = []
     try:
-        tweet = Tweet.select(Tweet.text, Tweet.date,User.name, User.alias).join(User).where(User.alias == nick).order_by(Tweet.date.desc()).offset(offset).limit(limit).dicts()[:]
+        tweet = Tweet.select(Tweet.text, Tweet.date,User.name, User.alias).join(User).where(User.alias == nick_1).order_by(Tweet.date.desc()).offset(offset).limit(limit).dicts()[:]
         
     except: pass
     try:
-        retweet = ReTweet.select(ReTweet.date_tweet, ReTweet.date_retweet, ReTweet.nick, User.alias, User.name).join(User).where(User.alias == nick).order_by(ReTweet.date_retweet.desc()).offset(offset).limit(limit).dicts()[:]
+        retweet = ReTweet.select(ReTweet.date_tweet, ReTweet.date_retweet, ReTweet.nick, User.alias, User.name).join(User).where(User.alias == nick_1).order_by(ReTweet.date_retweet.desc()).offset(offset).limit(limit).dicts()[:]
         
     except: pass
     

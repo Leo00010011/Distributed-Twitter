@@ -9,7 +9,7 @@ try:
         NEW_LOGGER_RESPONSE, NEW_LOGGER_REQUEST, REGISTER_REQUEST, REGISTER_RESPONSE, \
         CREATE_TWEET_REQUEST, CREATE_TWEET_RESPONSE, PROFILE_REQUEST, PROFILE_RESPONSE,\
         FOLLOW_REQUEST,FOLLOW_RESPONSE, LOGOUT_REQUEST, LOGOUT_RESPONSE, RETWEET_REQUEST,\
-        RETWEET_RESPONSE
+        RETWEET_RESPONSE, FEED_REQUEST, FEED_RESPONSE
 except:
     import API.util as util
     from API.util import PORT_GENERAL_ENTRY, PORT_GENERAL_LOGGER
@@ -17,7 +17,7 @@ except:
         NEW_LOGGER_RESPONSE, NEW_LOGGER_REQUEST, REGISTER_REQUEST, REGISTER_RESPONSE,\
         CREATE_TWEET_REQUEST, CREATE_TWEET_RESPONSE, PROFILE_REQUEST, PROFILE_RESPONSE,\
         FOLLOW_REQUEST,FOLLOW_RESPONSE, LOGOUT_REQUEST, LOGOUT_RESPONSE, RETWEET_REQUEST,\
-        RETWEET_RESPONSE
+        RETWEET_RESPONSE, FEED_REQUEST, FEED_RESPONSE
 class Client():
 
     def __init__(self):
@@ -258,7 +258,7 @@ class Client():
 
         msg = {
             'type': CLIENT,
-            'proto': RETWEET_REQUEST,
+            'proto': FEED_REQUEST,
             'token': token,
             'nick': nick
         }
@@ -267,7 +267,7 @@ class Client():
         if not good:
             return False, str(recv_data)
         
-        if recv_data['proto'] == RETWEET_RESPONSE:
+        if recv_data['proto'] == FEED_RESPONSE:
             if recv_data['succesed']:
                 return True, recv_data['data']
             else:
