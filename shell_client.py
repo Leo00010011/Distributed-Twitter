@@ -200,10 +200,10 @@ class ShellClient():
                 
     def see_profile(self):
 
-        util.clear()
-        self.print_Dwitter()
-        print()
         while True:            
+            util.clear()
+            self.print_Dwitter()
+            print()
             print('<--- Ver Perfil --->')
             print('Paso 1: Ingrese el Nick del Usuario')
             print('> ', end='')
@@ -211,9 +211,9 @@ class ShellClient():
 
             block = 0
             temp = []
+            i = 0
             while True:
-                succesed, data_profile, over = self.client.profile(nick, self.token, self.nick, block)
-                i = block*10
+                succesed, data_profile, over = self.client.profile(nick, self.token, self.nick, block)                
                 if succesed:
                     tweet = data_profile['tweets']
                     retweet = data_profile['retweets']
@@ -235,33 +235,10 @@ class ShellClient():
                         print()
                         temp.append(r)
                         i+=1
-                    print('|======< ReDweets del Perfil >======|')
-                    
-                    repeat = True
-                    while repeat:
-                        print('Escriba el numero del Dweet o ReDeweet que desea ReDweetear. En caso contrario presione ENTER')
-                        try:
-                            inpu = int(input())
-                            if 0 <= inpu < len(temp):
-                                print('RETWEET desde el client')
-                                print(temp[inpu])
-                                if 'date_retweet' in temp[inpu].keys():
-                                    good, retweet = self.client.retweet(self.token, self.nick, temp[inpu]["nick"], temp[inpu]["date_tweet"])
-                                else:
-                                    good, retweet = self.client.retweet(self.token, self.nick, temp[inpu]["alias"], temp[inpu]["date"])
-                                print('RETWEET recibido al cliente')
-                                if good:
-                                    print('ReDweet realizado con EXITO')
-                                else:
-                                    print('ReDweet NOOOOO realizado con EXITO')
-                        except:
-                            repeat = False
-
+                    print('|======< FIN de los ReDweets >======|')
+                                        
                     if over:
                         print('|======< Fin del Perfil >======|')
-                        break
-                    print('Pulse ENTER para ver mas, o escriba "q" para terminar con este usuario')
-                    if input() == 'q':
                         break
                     block += 1
                 else:
@@ -269,10 +246,10 @@ class ShellClient():
                     print('<+++++ Error +++++>')
                     print(data_profile)
                     print('<+++++|+++++|+++++>')
-                    print('Pulse ENTER para volver a intentar, o escriba "q" para terminar con este usuario')
+                    print('Pulse "r" para volver a intentar, o pulse ENTER en otro caso')
                     inp = input()
-                    if inp != 'q':
-                        return
+                    if inp == 'q':
+                        break                    
             print('Pulse ENTER para ver otro perfil, o escriba "q" para volver al menu principal')
             if input() == 'q':
                 break
@@ -347,19 +324,21 @@ class ShellClient():
         util.clear()
         self.print_Dwitter()
         print()        
-
-        block = 0
+        
         temp = []
-        while True:
-            print('Pidiendo')
-            succesed, things = self.client.feed(self.token, self.nick)
-            print('LLEGO')
+        while True:            
+            succesed, things = self.client.feed(self.token, self.nick)            
             if succesed:
-                print(things)
-                input()
+                print(things)                
             else:
-                input()
-                return
+                print('Ha ocurrido un ERROR :"(')
+                print('<+++++ Error +++++>')
+                print(things)
+                print('<+++++|+++++|+++++>')
+            print('Pulse ENTER para volver a intentar, o escriba "q" para terminar')
+            inp = input()
+            if inp == 'q':
+                break
             '''
             i = block*10
             if succesed:
