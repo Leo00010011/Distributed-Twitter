@@ -956,6 +956,7 @@ class EntryPointServerTheaded(MultiThreadedServer):
 
     def add_logger_from_entry_point(self, id:int,task: tuple[socket.socket,object],event:Event, storage, data: dict):
 
+        task[0].close()
         with self.lock:
             self.stalker_loggers.update_IP(data['ip'])
             self.stalker_loggers.refresh_dirs()

@@ -41,10 +41,14 @@ class TweeterServer(MultiThreadedServer):
         self.siblings = []
         self.is_primary = False
         self.my_ip = socket.gethostbyname(socket.gethostname())
+
+        self.pending_tasks = {}
+        self.execute_pending_tasks = False
         
         with open('entrys.txt', 'r') as ft:
             for ip in ft.read().split(sep='\n'):
                 self.entry_point_ips.append(str(ip))
+                self.pending_tasks[ip] = []
         self.current_index_entry_point_ip = random.randint(0, len(self.entry_point_ips))
         self.chord_id = None
 
@@ -134,6 +138,19 @@ class TweeterServer(MultiThreadedServer):
                 self.set_data(socket_client, addr_client, data_dict,storage)
             elif proto_rqst == CHECK_USER_REQUEST:
                 self.nick_check(socket_client, addr_client, data_dict,storage)
+            
+            elif proto_rqst == ADD_TWEET:
+                self.add_tweet_from_logger(socket_client, addr_client, data_dict,storage)
+            elif proto_rqst == ADD_RETWEET:
+                self.add_retweet_from_logger(socket_client, addr_client, data_dict,storage)
+            elif proto_rqst == ADD_PROFILE:
+                self.add_profile_from_logger(socket_client, addr_client, data_dict,storage)
+            elif proto_rqst == ADD_FOLLOW:
+                self.add_follow_from_logger(socket_client, addr_client, data_dict,storage)
+            elif proto_rqst == ADD_TOKEN:
+                self.add_token_from_logger(socket_client, addr_client, data_dict,storage)
+            elif proto_rqst == REMOVE_TOKEN:
+                self.remove_follow_from_logger(socket_client, addr_client, data_dict,storage)
         
         else: 
             pass
@@ -261,7 +278,17 @@ class TweeterServer(MultiThreadedServer):
                 code_nick = hashlib.sha256(nick.encode()).hexdigest()
                 print('codificado')
                 view.CreateUser(name, nick, code_pass, code_nick)
-                print('view correcto')
+                print('view correcto')                
+                
+                #### AGREGANDO A LAS TAREAS PENDIENTES ####
+                self.add_task(ADD_PROFILE, {
+                    'name': name,
+                    'nick': nick,
+                    'code_pass': code_pass,
+                    'code_nick': code_nick
+                })
+                #### AGREGADO A LAS TAREAS PENDIENTES #####
+
                 data = register_response_msg(True, None, data_dict['id_request'])
                 print(data)
             except Exception as e:
@@ -300,6 +327,14 @@ class TweeterServer(MultiThreadedServer):
         try:
             Token = view.GetTokenLogIn(nick,hashlib.sha256(password.encode()).hexdigest())
             if Token:
+
+                #### AGREGANDO A LAS TAREAS PENDIENTES ####
+                self.add_task(ADD_TOKEN, {
+                    'nick': nick,
+                    'token': Token
+                })
+                #### AGREGADO A LAS TAREAS PENDIENTES #####
+
                 data = login_response_msg(True, Token, None, id_request)
                 
             else:
@@ -317,6 +352,12 @@ class TweeterServer(MultiThreadedServer):
 
         if view.CheckToken(token, nick):
             if view.RemoveToken(nick, token):
+                #### AGREGANDO A LAS TAREAS PENDIENTES ####
+                self.add_task(REMOVE_TOKEN, {
+                    'nick': nick,
+                    'token': token
+                })
+                #### AGREGADO A LAS TAREAS PENDIENTES #####
                 data = logout_response_msg(True, None, id_request)
             else:
                 data = logout_response_msg(False, "Error removing login", id_request)
@@ -400,7 +441,14 @@ class TweeterServer(MultiThreadedServer):
             if view.CheckToken(data_dict['token'], data_dict['nick']):
                 date = datetime.datetime.now() 
                 
-                if view.CreateTweet( data_dict['text'], data_dict['nick'], date): 
+                if view.CreateTweet( data_dict['text'], data_dict['nick'], date):
+                    #### AGREGANDO A LAS TAREAS PENDIENTES ####
+                    self.add_task(ADD_TWEET, {
+                        'text': data_dict['text'],
+                        'nick': data_dict['nick'],                        
+                        'date': str(data)
+                    })
+                    #### AGREGADO A LAS TAREAS PENDIENTES #####
                     data = create_tweet_response_msg(True, None, id_request)
                     send_and_close(addr_client[0], PORT_GENERAL_LOGGER, data)
                     self.update_info([{'text':data_dict['text'], 'nick':data_dict['nick'], 'date':date}], TWEET_TABLE)
@@ -440,6 +488,12 @@ class TweeterServer(MultiThreadedServer):
                         if state.desired_data['succesed']:
                             print('SUCCESED')
                             if not view.CreateFollow(data_dict['nick'], data_dict['nick_profile']):
+                                #### AGREGANDO A LAS TAREAS PENDIENTES ####
+                                self.add_task(ADD_FOLLOW, {
+                                    'nick': data_dict['nick'],
+                                    'nick_profile': data_dict['nick_profile']
+                                })
+                                #### AGREGADO A LAS TAREAS PENDIENTES #####
                                 data = follow_response_msg(False, 'Error when following this user', id_request)
                                 print('Data', data)
                             else: pass
@@ -597,7 +651,16 @@ class TweeterServer(MultiThreadedServer):
                     print(state.desired_data)
 
                     if state.desired_data['exist']:
-                        if  view.CreateReTweet(data_dict['nick'], data_dict['nick_profile'], data_dict['date']):
+                        date_retweet = str(datetime.datetime().now())
+                        if  view.CreateReTweet(data_dict['nick'], data_dict['nick_profile'], data_dict['date'], date_retweet):
+                            #### AGREGANDO A LAS TAREAS PENDIENTES ####
+                            self.add_task(ADD_RETWEET, {
+                                'nick': data_dict['nick'],
+                                'nick_profile': data_dict['nick_profile'],
+                                'date': data_dict['date'],
+                                'date_retweet': date_retweet
+                            })
+                            #### AGREGADO A LAS TAREAS PENDIENTES #####
                             data = retweet_response_msg(True, None, id_request)
                             send_and_close(addr_client[0], PORT_GENERAL_LOGGER, data)   
                             return
@@ -969,4 +1032,94 @@ class TweeterServer(MultiThreadedServer):
         if data_dict['primary']:
             self.primary.append(addr_client[0]) 
         self.siblings.append(addr_client[0])
-        
+
+    #--------------------------
+
+    def add_task(self, proto, data):
+        for ip, tasks in self.pending_tasks.items():
+            tasks.append((proto, data))
+
+    def send_pending_tasks(self, event: Event):
+        self.execute_pending_tasks = True        
+        while not event.is_set():
+            print('Tareas Pendientes:')
+            print(self.pending_tasks)
+            for ip, tasks in self.pending_tasks.items():
+                i = 0
+                while i < len(tasks):                    
+                    try:
+                        msg = {
+                            'type':  TWEET,
+                            'proto': tasks[i][0],
+                            'data':  tasks[i][1]
+                        }
+                        s = socket.socket(AF_INET, SOCK_STREAM)
+                        s.connect((ip, PORT_GENERAL_LOGGER))
+                        s.send(util.encode(msg))
+                        s.close()
+                        tasks.pop(i)
+                        print(f'TAREA PENDIENTE "{tasks[i][0]}:{tasks[i][1]}" ENVIADA a {ip}:{PORT_GENERAL_ENTRY}')
+                        i -= 1
+                    except:
+                        print(f'TAREA PENDIENTE "{tasks[i][0]}:{tasks[i][1]}" NO enviada a {ip}:{PORT_GENERAL_ENTRY}')
+                        break
+                    i += 1
+                    event.wait(random.randint(1,5))
+        self.execute_pending_tasks = False
+        print('END Pending Tasks')
+
+    #----------------- ADD TWEET ------------------#
+
+    def add_tweet_from_logger(self, task: tuple[socket.socket,object],event:Event, storage, data_dict: dict):
+        task[0].close()
+        data = data_dict['data']
+        text = data['text']
+        nick = data['nick']
+        date = data['date']
+        view.CreateTweet(text, nick, date)
+
+
+    #----------------- ADD RETWEET ------------------#
+
+    def add_retweet_from_logger(self, task: tuple[socket.socket,object],event:Event, storage, data_dict: dict):
+        data = data_dict['data']
+        nick = data['nick']
+        nick_profile = data['nick_profile']
+        date = data['date']
+        date_retweet = data['date_retweet']
+        view.CreateReTweet(nick, nick_profile, date, date_retweet)
+
+
+    #----------------- ADD PROFILE ------------------#
+
+    def add_profile_from_logger(self, task: tuple[socket.socket,object],event:Event, storage, data_dict: dict):
+        data = data_dict['data']
+        name = data['name']
+        nick = data['nick']
+        code_pass = data['code_pass']
+        code_nick = data['code_nick']
+        view.CreateUser(name, nick, code_pass, code_nick)
+
+    #----------------- ADD FOLLOW ------------------#
+
+    def add_follow_from_logger(self, task: tuple[socket.socket,object],event:Event, storage, data_dict: dict):
+        data = data_dict['data']
+        nick = data['nick']
+        nick_profile = data['nick_profile']
+        view.CreateFollow(nick, nick_profile)
+
+    #----------------- ADD TOKEN ------------------#
+
+    def add_token_from_logger(self, task: tuple[socket.socket,object],event:Event, storage, data_dict: dict):
+        data = data_dict['data']
+        nick = data['nick']
+        token = data['token']
+        view.CreateTokenForced(nick,token)
+
+    #----------------- REMOVE TOKEN ------------------#
+
+    def remove_follow_from_logger(self, task: tuple[socket.socket,object],event:Event, storage, data_dict: dict):
+        data = data_dict['data']
+        nick = data['nick']
+        token = data['token']
+        view.RemoveToken(nick,token)
