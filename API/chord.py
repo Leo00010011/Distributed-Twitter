@@ -433,10 +433,13 @@ class ChordServer:
             'IP':[holder.desired_data.ip] ,
             'id_request':msg.req_id
         }
-        socket_client = socket(AF_INET, SOCK_STREAM)
-        socket_client.connect(('127.0.0.1', util.PORT_GENERAL_LOGGER))
-        socket_client.send(util.encode(msg_dict))
-        socket_client.close()
+        try:
+            socket_client = socket(AF_INET, SOCK_STREAM)
+            socket_client.connect(('127.0.0.1', util.PORT_GENERAL_LOGGER))
+            socket_client.send(util.encode(msg_dict))
+            socket_client.close()
+        except Exception:
+            return
         self.update_log(f'end outside req')
         print(f'end outside req')
 
