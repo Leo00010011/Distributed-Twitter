@@ -953,20 +953,20 @@ class TweeterServer(MultiThreadedServer):
                         table = data_dict['table']
 
                         if table == TWEET_TABLE:
-                            table_data = view.GetTweetRange(hash_limit)
+                            table_data = view.GetTweetRange(hash_limit, my_hash = self.my_hash)
                             for t in table_data:
                                 t['data'] = str(t['data'])
                         if table == RETWEET_TABLE:
-                            table_data = view.GetRetweetRange(hash_limit)
+                            table_data = view.GetRetweetRange(hash_limit, my_hash = self.my_hash)
                             for t in table_data:
                                 t['data_tweet'] = str(t['data_tweet'])
                                 t['data_retweet'] = str(t['data_retweet'])
                         if table == FOLLOW_TABLE:
-                            table_data = view.GetFollowRange(hash_limit) 
+                            table_data = view.GetFollowRange(hash_limit, my_hash = self.my_hash) 
                         if table == TOKEN_TABLE:
-                            table_data = view.GetTokenRange(hash_limit) 
+                            table_data = view.GetTokenRange(hash_limit, my_hash = self.my_hash) 
                         if table == USER_TABLE:
-                            table_data = view.GetUserPaswordRange(hash_limit)
+                            table_data = view.GetUserPaswordRange(hash_limit, my_hash = self.my_hash)
 
                     start = block* 20
                     end = min(block*20 + 20, len(table_data))
@@ -996,7 +996,6 @@ class TweeterServer(MultiThreadedServer):
                 skt = socket.socket(AF_INET, SOCK_STREAM)
                 skt.connect((s, PORT_GENERAL_LOGGER))
                 skt.send(util.encode(data))
-
                 data_x = skt.recv(1024)
                 data_x = util.decode(data_x)
                 if self.primary == []:
