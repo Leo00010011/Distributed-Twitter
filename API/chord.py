@@ -246,8 +246,15 @@ class ChordServer:
                 self.update_log(f'Bad Request: {msg}')
                 self.update_log(str(e))
                 return
-            self.update_log(f'recived: cmd:{parsed_msg.cmd} req_id:{parsed_msg.req_id} id:{parsed_msg.id_hex} owner:{parsed_msg.owner_ip} as_max:{str(parsed_msg.as_max)}')
-            self.response[parsed_msg.cmd](parsed_msg ,socket_client ,addr_client)
+            try:
+                self.update_log(f'recived: cmd:{parsed_msg.cmd} req_id:{parsed_msg.req_id} id:{parsed_msg.id_hex} owner:{parsed_msg.owner_ip} as_max:{str(parsed_msg.as_max)}')
+                self.response[parsed_msg.cmd](parsed_msg ,socket_client ,addr_client)
+            except Exception as e:
+                for i in range(5):
+                    print('************************************')
+                print(e)
+                for i in range(5):
+                    print('************************************')
         return dispatcher
 
     def get_some_node(self):
