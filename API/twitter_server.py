@@ -1,6 +1,6 @@
 import socket
 from socket import AF_INET, SOCK_STREAM
-from threading import Thread, Event, lock
+from threading import Thread, Event, Lock
 import hashlib
 import random
 import datetime
@@ -855,11 +855,14 @@ class TweeterServer(MultiThreadedServer):
         print(suc)
         sib = data_dict('siblings',[])
         print(sib)
-        
-        self.say_hello(sib)
-        self.chord_id = data_dict['chord_id']
+        self.siblings = sib
 
-        type_node, ips = REPLIC_NODE, self.primary if sib else NEW_NODE, suc
+        t1 = Thread(target = self.say_hello)
+        t1.start()
+
+
+        self.chord_id = data_dict['chord_id']
+        ips = self.siblings if sib else suc
         
         ips = random.shufle(ips)
         data = transference_request_msg(self.chord_id, USER_TABLE, False, 0)
@@ -900,31 +903,31 @@ class TweeterServer(MultiThreadedServer):
                 user = data["alias"]
                 text = data['text']
                 date = data["date"]
-                view.CreateTweet(text,user,date, self.my_id)
+                view.CreateTweet(text,user,date, self.chord_id)
 
             if table == RETWEET_TABLE:
                 user = data["alias"]
                 date_tweet = data['date_tweet']
                 date_retweet = data['date_retweet']
                 nick = data["nick"]
-                view.CreateReTweet(user,nick, date_tweet,date_retweet, self.my_id)
+                view.CreateReTweet(user,nick, date_tweet,date_retweet, self.chord_id)
 
             if table == FOLLOW_TABLE:
                 follower = data["alias"]
                 followed = data['followed']
-                view.CreateFollow(follower,followed, self.my_id)
+                view.CreateFollow(follower,followed, self.chord_id)
             
             if table == TOKEN_TABLE:
                 nick = data["alias"]
                 token = data['token']
-                view.CreateTokenForced(nick, token, self.my_id)
+                view.CreateTokenForced(nick, token, self.chord_id)
 
             
             if table == USER_TABLE:
                 name = data["name"]
                 password = data['password']
                 nick = data["alias"]
-                view.CreateUser(name, nick, password, hashlib.sha256(bytes(nick)).hexdigest(), self.my_id)
+                view.CreateUser(name, nick, password, hashlib.sha256(bytes(nick)).hexdigest(), self.chord_id)
 
     def data_transfer(self, socket_client, addr_client, data_dict, storage):
             """
@@ -981,48 +984,48 @@ class TweeterServer(MultiThreadedServer):
             socket_client.close()
 
 
-    def say_hello(self, siblings):
-        self.siblings = siblings
-        print('dentro del SAY HELLO', siblings)
+    def say_hello(self):        
+        print('dentro del SAY HELLO')
         data = {
             'type': LOGGER,
-            'proto': HELLO,
-            'primary': len(siblings) < 5
+            'proto': HELLO
         }
+        sibs = self.siblings.copy()
+
+        while len(sibs) > 0:
+            i = 0
+            while i < len(sibs):
+                try:
+                    skt = socket.socket(AF_INET, SOCK_STREAM)
+                    skt.connect((sibs[i], PORT_GENERAL_LOGGER))
+                    skt.send(util.encode(data))
+                    data_x = skt.recv(1024)
+                    data_x = util.decode(data_x)
+                    skt.close()
+                    with self.lock_tasks:
+                        if self.pending_tasks.get(sibs[i], None) is None:
+                            self.pending_tasks[sibs[i]] = []
+                    sibs.pop(i)
+                    i -= 1
+                except:
+                    pass
+                i+=1
+            time.sleep(random.randint(1,6))
         
-        for s in siblings:
-
-            try:
-                skt = socket.socket(AF_INET, SOCK_STREAM)
-                skt.connect((s, PORT_GENERAL_LOGGER))
-                skt.send(util.encode(data))
-                data_x = skt.recv(1024)
-                data_x = util.decode(data_x)
-                if self.primary == []:
-                    self.primary = data_x['primary']
-                skt.close()
-                with self.lock_tasks:
-                    if self.pending_tasks.get(s, None) is None:
-                        self.pending_tasks[s] = []
-            except: pass
-
-        if len(siblings) < 5:
-            self.primary.append(self.my_ip)
 
 
     def say_welcome(self, socket_client, addr_client, data_dict, storage):
         
         data = {
             'type': LOGGER,
-            'proto': WELLCOME,
-            'primary': self.primary
+            'proto': WELLCOME,            
         }
-        socket_client.send(util.encode(data))
-        socket_client.close()
-        
-        #if data_dict['primary']:
-        #    self.primary.append(addr_client[0]) 
-        #self.siblings.append(addr_client[0])
+        try:
+            socket_client.send(util.encode(data))
+            socket_client.close()            
+        except:
+            print('NO wellcome')
+            return
 
         with self.lock_tasks:
             if self.pending_tasks.get(addr_client[0], None) is None:
@@ -1060,6 +1063,7 @@ class TweeterServer(MultiThreadedServer):
                         break
                     i += 1
                     event.wait(random.randint(1,5))
+            event.wait(random.randint(4,10))
         self.execute_pending_tasks = False
         print('END Pending Tasks')
 

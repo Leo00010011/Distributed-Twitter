@@ -252,7 +252,8 @@ class ChordServer:
             except Exception as e:
                 for i in range(5):
                     print('************************************')
-                print(e)
+                print('Parse MSG: ', parsed_msg.cmd)
+                print('Error: ', e)
                 for i in range(5):
                     print('************************************')
         return dispatcher
@@ -460,6 +461,8 @@ class ChordServer:
     def rec_get_succ_resp(self ,msg:ParsedMsg ,socket_client ,addr):
         self.update_log('start rec get_succ_resp')
         holder = self.state_storage.get_state(msg.req_id)
+        if holder is None:
+            return
         holder.desired_data = ChordNode(msg.id ,msg.id_hex ,addr[0] ,msg.as_max)
         holder.hold_event.set()
         self.state_storage.delete_state(msg.req_id)

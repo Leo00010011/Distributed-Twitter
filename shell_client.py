@@ -248,7 +248,7 @@ class ShellClient():
                     print('<+++++|+++++|+++++>')
                     print('Pulse "r" para volver a intentar, o pulse ENTER en otro caso')
                     inp = input()
-                    if inp == 'q':
+                    if inp == 'r':
                         break                    
             print('Pulse ENTER para ver otro perfil, o escriba "q" para volver al menu principal')
             if input() == 'q':
