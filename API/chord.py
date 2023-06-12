@@ -349,6 +349,8 @@ class ChordServer:
                 if as_max:
                     self.update_log('my self as_max')
                     holder = self.state_storage.get_state(req_id)
+                    if not holder:
+                        return
                     holder.desired_data = who
                     holder.hold_event.set()
                     return

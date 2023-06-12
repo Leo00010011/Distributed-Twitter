@@ -236,6 +236,10 @@ class ShellClient():
                         temp.append(r)
                         i+=1
                     print('|======< FIN de los ReDweets >======|')
+
+                    print('Pulse ENTER para seguir viendo, o "q" para salir con el perfil')
+                    if input() == 'q':
+                        over = True
                                         
                     if over:
                         print('|======< Fin del Perfil >======|')
@@ -248,7 +252,7 @@ class ShellClient():
                     print('<+++++|+++++|+++++>')
                     print('Pulse "r" para volver a intentar, o pulse ENTER en otro caso')
                     inp = input()
-                    if inp == 'r':
+                    if inp != 'r':
                         break                    
             print('Pulse ENTER para ver otro perfil, o escriba "q" para volver al menu principal')
             if input() == 'q':
@@ -327,9 +331,20 @@ class ShellClient():
         
         temp = []
         while True:            
-            succesed, things = self.client.feed(self.token, self.nick)            
-            if succesed:
-                print(things)                
+            succesed, things = self.client.feed(self.token, self.nick)                  
+            if succesed:                                
+                for i, thing in enumerate(things):
+                    print('Archivo uno ', thing)
+                    if thing[3] is None:
+                        print(f'{i} Tweet de {thing[2]} del {thing[0]}:')
+                        print(thing[1])
+                        print()
+                    else:
+                        print(f'{i} ReTweet de {thing[2]} del {thing[0]}')
+                        print(f'Tweet Original de {thing[3]} del {thing[4]}:')
+                        print(thing[1])
+                        print()                
+
             else:
                 print('Ha ocurrido un ERROR :"(')
                 print('<+++++ Error +++++>')

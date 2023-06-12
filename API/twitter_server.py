@@ -921,7 +921,7 @@ class TweeterServer(MultiThreadedServer):
         
         print("COPY DATA")
         for data in data_dict['data']:
-            print()
+            #print()
             if table == TWEET_TABLE:
                 #user = data["alias"]
                 #text = data['text']
@@ -930,6 +930,8 @@ class TweeterServer(MultiThreadedServer):
                 self.add_tweet_from_logger({'data':data})
 
             if table == RETWEET_TABLE:
+                print('Retweet')
+                print(data)
                 #user = data["alias"]
                 #date_tweet = data['date_tweet']
                 #date_retweet = data['date_retweet']
@@ -987,8 +989,8 @@ class TweeterServer(MultiThreadedServer):
                 if table == RETWEET_TABLE:
                     table_data = view.GetRetweetRange(hash_limit, my_hash = self.chord_id, offset = start, limit = 20)
                     for t in table_data:
-                        t['data_tweet'] = str(t['data_tweet'])
-                        t['data_retweet'] = str(t['data_retweet'])
+                        t['date_tweet'] = str(t['date_tweet'])
+                        t['date_retweet'] = str(t['date_retweet'])
                 if table == FOLLOW_TABLE:
                     table_data = view.GetFollowRange(hash_limit, my_hash = self.chord_id, offset = start, limit = 20) 
                 if table == TOKEN_TABLE:
