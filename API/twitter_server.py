@@ -863,10 +863,12 @@ class TweeterServer(MultiThreadedServer):
         print('Construir Hilo SAY HELLO')
         t1 = Thread(target = self.say_hello)
         t1.start()
+        
+        
 
 
         self.chord_id = data_dict['chord_id']
-        ips = self.siblings if sib else suc
+        ips = self.siblings if sib and len(sib) > 1 else suc
         
         if not ips:
             return
@@ -921,7 +923,7 @@ class TweeterServer(MultiThreadedServer):
         
         print("COPY DATA")
         for data in data_dict['data']:
-            print()
+            #print()
             if table == TWEET_TABLE:
                 #user = data["alias"]
                 #text = data['text']
@@ -930,6 +932,8 @@ class TweeterServer(MultiThreadedServer):
                 self.add_tweet_from_logger({'data':data})
 
             if table == RETWEET_TABLE:
+                print('Retweet')
+                print(data)
                 #user = data["alias"]
                 #date_tweet = data['date_tweet']
                 #date_retweet = data['date_retweet']
@@ -987,8 +991,8 @@ class TweeterServer(MultiThreadedServer):
                 if table == RETWEET_TABLE:
                     table_data = view.GetRetweetRange(hash_limit, my_hash = self.chord_id, offset = start, limit = 20)
                     for t in table_data:
-                        t['data_tweet'] = str(t['data_tweet'])
-                        t['data_retweet'] = str(t['data_retweet'])
+                        t['date_tweet'] = str(t['date_tweet'])
+                        t['date_retweet'] = str(t['date_retweet'])
                 if table == FOLLOW_TABLE:
                     table_data = view.GetFollowRange(hash_limit, my_hash = self.chord_id, offset = start, limit = 20) 
                 if table == TOKEN_TABLE:
@@ -1077,6 +1081,8 @@ class TweeterServer(MultiThreadedServer):
             print('Tareas Pendientes:')
             print(self.pending_tasks)
             for ip, tasks in self.pending_tasks.items():
+                print('IMPRIMIENDO TAREAS')                
+                print(tasks)
                 i = 0
                 while i < len(tasks):                    
                     try:
@@ -1089,8 +1095,8 @@ class TweeterServer(MultiThreadedServer):
                         s.connect((ip, PORT_GENERAL_LOGGER))
                         s.send(util.encode(msg))
                         s.close()
-                        tasks.pop(i)
                         print(f'TAREA PENDIENTE "{tasks[i][0]}:{tasks[i][1]}" ENVIADA a {ip}:{PORT_GENERAL_ENTRY}')
+                        tasks.pop(i)
                         i -= 1
                     except:
                         print(f'TAREA PENDIENTE "{tasks[i][0]}:{tasks[i][1]}" NO enviada a {ip}:{PORT_GENERAL_ENTRY}')
