@@ -863,10 +863,12 @@ class TweeterServer(MultiThreadedServer):
         print('Construir Hilo SAY HELLO')
         t1 = Thread(target = self.say_hello)
         t1.start()
+        
+        
 
 
         self.chord_id = data_dict['chord_id']
-        ips = self.siblings if sib else suc
+        ips = self.siblings if sib and len(sib) > 1 else suc
         
         if not ips:
             return
@@ -1079,6 +1081,8 @@ class TweeterServer(MultiThreadedServer):
             print('Tareas Pendientes:')
             print(self.pending_tasks)
             for ip, tasks in self.pending_tasks.items():
+                print('IMPRIMIENDO TAREAS')                
+                print(tasks)
                 i = 0
                 while i < len(tasks):                    
                     try:
@@ -1091,8 +1095,8 @@ class TweeterServer(MultiThreadedServer):
                         s.connect((ip, PORT_GENERAL_LOGGER))
                         s.send(util.encode(msg))
                         s.close()
-                        tasks.pop(i)
                         print(f'TAREA PENDIENTE "{tasks[i][0]}:{tasks[i][1]}" ENVIADA a {ip}:{PORT_GENERAL_ENTRY}')
+                        tasks.pop(i)
                         i -= 1
                     except:
                         print(f'TAREA PENDIENTE "{tasks[i][0]}:{tasks[i][1]}" NO enviada a {ip}:{PORT_GENERAL_ENTRY}')

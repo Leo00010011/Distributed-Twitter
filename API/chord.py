@@ -233,7 +233,7 @@ class ChordServer:
         return prev_node, succ_node
 
     def start(self):
-        Thread(target= ChordServer.sleeping_log , args=[self] ,daemon = True).start()
+        # Thread(target= ChordServer.sleeping_log , args=[self] ,daemon = True).start()
         server_thread = Thread(target= self.server.start_server)
         server_thread.start()
         print('some node')
@@ -248,15 +248,17 @@ class ChordServer:
             self.insert(ips)
         print('insert finished and starting to maintain')
         Thread(target=ChordServer.MaintainFt , args=[self] , daemon=True).start()
-        
-        msg = self.build_insert_response()
-        print('builded msg')
-        self.send_and_close(['127.0.0.1'],msg,util.PORT_GENERAL_LOGGER)
-        print('before register')
-        self.register_in_entry()
-        print('registered')
-        self.update_log(f'inserted')
-        server_thread.join()
+        try:
+            msg = self.build_insert_response()
+            print('builded msg', msg)
+            self.send_soft(['127.0.0.1'],msg,'to ale',util.PORT_GENERAL_LOGGER,5)
+            print('before register')
+            self.register_in_entry()
+            print('registered')
+            self.update_log(f'inserted')
+            server_thread.join()
+        except Exception as e:
+            print(e)
 
 
     def create_dispatcher(self):
@@ -458,6 +460,7 @@ class ChordServer:
         socket_client.close()
         print(f'recived outside req for {msg["id_hex"]}')
         self.update_log(f'start rec outside_get {msg["id_hex"]}')
+        print(f'start rec outside_get {msg["id_hex"]}')
         holder : ThreadHolder = self.state_storage.insert_state()
         print(f'antes del while')
         id = TwoBaseId(int(msg['id_hex'],16),msg['id_hex'] )
@@ -473,9 +476,10 @@ class ChordServer:
                 holder.desired_data = ChordNode(self.id ,self.id_hex ,self.reps ,False)
             if not holder.desired_data:
                 self.update_log(f'failed to get succ of {msg["id_hex"]}')
-                print('fail to wait')
+                print(f'failed to get succ of {msg["id_hex"]}')
         self.state_storage.delete_state(holder.id)
         self.update_log('responding to outside')
+        print('responding to outside')
         self.response_to_outside(holder.desired_data.ip_list,msg['req_id'])
 
     def response_to_outside(self,ip_list,req_id):
@@ -712,9 +716,10 @@ class ChordServer:
         while True: 
             for _ in range(10):
                 msg = ChordServer.create_msg(cmd = self.get_succ_req_cmd ,id_hex = id_hex ,owner_ip = self.ip ,as_max = as_max ,req_id = holder.id)
-                self.update_log(f'starting to send (ask_succ to {ips} for {id_hex} as_max:{str(as_max)})')
+                self.update_log(f'starting to send (ask_succ to {ips} for {id_hex} as_max:{str(as_max)})')                
                 self.send_til_success(ips ,msg ,'ask_succ',self.port)
-                self.update_log(f'waiting for response in ask_succ')
+                self.update_log(f'waiting for response in ask_succ')                
+
                 holder.hold_event.wait(5)
                 if holder.desired_data:
                     self.state_storage.delete_state(holder.id)
@@ -730,7 +735,7 @@ class ChordServer:
             'type': util.CHORD ,
             'proto': util.NEW_LOGGER_REQUEST,
             'sucesors': self.Ft[1][0].ip_list,
-            'siblings':[] ,
+            'siblings':self.reps ,
             'chord_id': self.id_hex
         }
         return json.dumps(msg_dict)
@@ -770,8 +775,8 @@ class ChordServer:
         for _ in range(try_count):
             response = self.send_and_close(ips ,msg ,port, have_recv)
             if not response:
-                print('no response')
                 self.update_log(f'failed to send {req_name} to {ips}:{port}')
+                print(f'failed to send {req_name} to {ips}:{port}')
                 sleep(2)
             else:
                 break
@@ -779,15 +784,16 @@ class ChordServer:
 
     def send_and_close(self ,ips ,msg: str, port,have_recv = True):
         response = None
-        shuffle(ips)
+        if ips:
+            shuffle(ips)
         for ip in ips:
             for _ in range(10):    
                 try:
                     s = socket(AF_INET ,SOCK_STREAM)
                     self.update_log(f'connecting to {ip}:{port}')
-                    s.connect((ip ,port))            
-                    s.send(msg.encode()) 
-                    if have_recv:           
+                    s.connect((ip ,port))   
+                    s.send(msg.encode())
+                    if have_recv:          
                         response = s.recv(15000)
                     else:
                         response = 'Ok'
@@ -799,6 +805,7 @@ class ChordServer:
                             self.request_count[ip] = 1
                         break
                 except Exception as e:
+                    print(e)
                     self.update_log(str(e)) 
             if not (response == None):
                 break
