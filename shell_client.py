@@ -81,8 +81,7 @@ class ShellClient():
                 elif args[0] == "5" and len(args) == 1:
                     pass
                 # Seguir Usuario
-                elif args[0] == "6" and len(args) == 1:
-                    print('intentar follow')
+                elif args[0] == "6" and len(args) == 1:                    
                     self.follow()
                 # Cerrar Sesion
                 elif args[0] == "7" and len(args) == 1:
@@ -219,10 +218,8 @@ class ShellClient():
                     retweet = data_profile['retweets']
                     
                     print('|======< Dweets del Perfil >======|')
-                    for t in tweet:
-                        print('Tweet ', t)
-                        self.cache.add_something(t["date"], t["text"], nick, None, None)
-                        print('Guadado en Cache')
+                    for t in tweet:                        
+                        self.cache.add_something(t["date"], t["text"], nick, None, None)                        
                         print(f'{i} Tweet de {nick} del {t["date"]}:')
                         print(t["text"])
                         print()
@@ -232,8 +229,7 @@ class ShellClient():
                     
                     print('|======< ReDweets del Perfil >======|')
                     for r in retweet:
-                        self.cache.add_something(r["date_retweet"], t["text"], r["alias"], r["nick"], r["date_tweet"])
-                        print('Guadado en Cache')
+                        self.cache.add_something(r["date_retweet"], t["text"], r["alias"], r["nick"], r["date_tweet"])                        
                         print(f'{i} ReTweet de {r["alias"]} del {r["date_retweet"]}\n')
                         print(f'Tweet Original de {r["nick"]} del {r["date_tweet"]}:')
                         print(r["text"])
@@ -260,7 +256,6 @@ class ShellClient():
                         publishes = list(self.cache.profiles[nick])
                         if len(publishes)>0:
                             print('Mostrando Cache')
-                            print(publishes)
                             for thing in random.sample(publishes, min(10, len(publishes))):
                                 if thing[3] is None:
                                     print(f'Tweet de {nick} del {thing[0]}:')
@@ -368,10 +363,8 @@ class ShellClient():
         while True:            
             succesed, things = self.client.feed(self.token, self.nick)                  
             if succesed:                                
-                for i, thing in enumerate(things):
-                    print('Archivo uno ', thing)
-                    self.cache.add_something(thing[0], thing[1], thing[2], thing[3], thing[4])
-                    print('Guadado en Cache')
+                for i, thing in enumerate(things):                    
+                    self.cache.add_something(thing[0], thing[1], thing[2], thing[3], thing[4])                    
                     if thing[3] is None:
                         print(f'{i} Tweet de {thing[2]} del {thing[0]}:')
                         print(thing[1])
@@ -407,70 +400,6 @@ class ShellClient():
             inp = input()
             if inp == 'q':
                 break
-            '''
-            i = block*10
-            if succesed:
-                tweet = data_profile['tweets']
-                retweet = data_profile['retweets']
-                
-                print('|======< Dweets del Perfil >======|')
-                for t in tweet:
-                    print(f'{i} Tweet de {nick} del {t["date"]}:')
-                    print(t["text"])
-                    print()
-                    temp.append(t)
-                    i+=1
-                print('|======< FIN de los Dweets >======|')
-                
-                print('|======< ReDweets del Perfil >======|')
-                for r in retweet:
-                    print(f'{i} ReTweet de {r["alias"]} del {r["date_retweet"]}\n')
-                    print(f'Tweet Original de {r["nick"]} del {r["date_tweet"]}:')
-                    print(r["text"])
-                    print()
-                    temp.append(r)
-                    i+=1
-                print('|======< ReDweets del Perfil >======|')
-                
-                repeat = True
-                while repeat:
-                    print('Escriba el numero del Dweet o ReDeweet que desea ReDweetear. En caso contrario presione ENTER')
-                    try:
-                        inpu = int(input())
-                        if 0 <= inpu < len(temp):
-                            print('RETWEET desde el client')
-                            print(temp[inpu])
-                            if 'date_retweet' in temp[inpu].keys():
-                                good, retweet = self.client.retweet(self.token, self.nick, temp[inpu]["nick"], temp[inpu]["date_tweet"])
-                            else:
-                                good, retweet = self.client.retweet(self.token, self.nick, temp[inpu]["alias"], temp[inpu]["date"])
-                            print('RETWEET recibido al cliente')
-                            if good:
-                                print('ReDweet realizado con EXITO')
-                            else:
-                                print('ReDweet NOOOOO realizado con EXITO')
-                    except:
-                        repeat = False
-
-                if over:
-                    print('|======< Fin del Perfil >======|')
-                    break
-                print('Pulse ENTER para ver mas, o escriba "q" para terminar con este usuario')
-                if input() == 'q':
-                    break
-                block += 1
-            else:
-                print('Ha ocurrido un ERROR :"(')
-                print('<+++++ Error +++++>')
-                print(data_profile)
-                print('<+++++|+++++|+++++>')
-                print('Pulse ENTER para volver a intentar, o escriba "q" para terminar con este usuario')
-                inp = input()
-                if inp != 'q':
-                    return
-            '''
-
-
 
 s = ShellClient()
 s.run()

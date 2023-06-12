@@ -74,10 +74,10 @@ class EntryPointServerTheaded(MultiThreadedServer):
             print(*str)
 
     def dispatcher_loggers(self):
-        print(self.stalker_loggers.alive_dirs)
+        
         with self.lock:
             dirs = self.stalker_loggers.alive_dirs.copy()
-        print(dirs)
+        
         rand.shuffle(dirs)
         l = dirs[:5]
         return l
@@ -94,11 +94,9 @@ class EntryPointServerTheaded(MultiThreadedServer):
     def send_pending_tasks(self, event: Event):
         self.execute_pending_tasks = True        
         while not event.is_set():
-            print('Tareas Pendientes:')
-            print(self.pending_tasks)
+            
             for ip, tasks in self.pending_tasks.items():
-                print('IMPRIMIENDO TAREAS')                
-                print(tasks)
+                
                 i = 0
                 while i < len(tasks):                    
                     try:
@@ -107,23 +105,23 @@ class EntryPointServerTheaded(MultiThreadedServer):
                             'proto': tasks[i][0],
                             'ip':  tasks[i][1]
                         }
-                        print('CREOOOOOOO EL MENSAJEEEEEE')
+                        
                         s = socket.socket(AF_INET, SOCK_STREAM)
                         s.connect((ip, PORT_GENERAL_ENTRY))
-                        print('SE CONECTOOOOOOOO')
+                        
                         s.send(util.encode(msg))
                         s.close()
-                        print(f'TAREA PENDIENTE "{tasks[i][0]}:{tasks[i][1]}" ENVIADA a {ip}:{PORT_GENERAL_ENTRY}')
+                        
                         tasks.pop(i)
                         i -= 1
                     except:
-                        print(f'TAREA PENDIENTE "{tasks[i][0]}:{tasks[i][1]}" NO enviada a {ip}:{PORT_GENERAL_ENTRY}')
+                        
                         break
                     i += 1
                     event.wait(rand.randint(1,5))
             event.wait(rand.randint(4,10))
         self.execute_pending_tasks = False
-        print('END Pending Tasks')
+        
 
 
     def switch(self, id:int,task: tuple[socket.socket,object],event:Event, storage):
@@ -136,9 +134,7 @@ class EntryPointServerTheaded(MultiThreadedServer):
         except Exception as e:
             print(e)
             return
-
-        print('Nuevo Mensaje')
-        print(type_msg, protocol)
+        
         if type_msg == CLIENT:
             if protocol == LOGIN_REQUEST:
                 self.login_request_from_client(id, task, event, storage, data)
@@ -198,7 +194,7 @@ class EntryPointServerTheaded(MultiThreadedServer):
 
         error = None        
         for ip in self.dispatcher_loggers():
-            print(ip)
+            
             try:
                 send_data = util.encode(message)
                 s = socket.socket(AF_INET, SOCK_STREAM)                
@@ -206,8 +202,7 @@ class EntryPointServerTheaded(MultiThreadedServer):
                 s.send(send_data)        
                 s.close()
                 return True, None
-            except Exception as e:                
-                print(f'Logger "{ip}" caido')                
+            except Exception as e:                                             
                 error = e
         return False, error
     
@@ -228,9 +223,9 @@ class EntryPointServerTheaded(MultiThreadedServer):
             'password': password,
             'id_request': state.id
         }
-        print('antes del send')
+        
         good, error = self.try_send_logger(message)
-        print('despues del send')
+        
         if not good:            
             msg = {
                 'type': ENTRY_POINT,
@@ -599,11 +594,11 @@ class EntryPointServerTheaded(MultiThreadedServer):
 
     def follow_request_from_client(self, id:int,task: tuple[socket.socket,object],event:Event, storage, data: dict):
         
-        print('Follow Recibido Entry')
+        
         token = data['token']
         nick = data['nick']
         nick_profile = data['nick_profile']        
-        print('Follow Recibido Entry 2')
+        
 
         state = storage.insert_state()
         message = {
@@ -614,9 +609,9 @@ class EntryPointServerTheaded(MultiThreadedServer):
             'nick_profile': nick_profile,
             'id_request': state.id
         }
-        print('try_send')
+        
         good, error = self.try_send_logger(message)
-        print(error)
+        
         if not good:
             msg = {
                 'type': ENTRY_POINT,
@@ -625,7 +620,7 @@ class EntryPointServerTheaded(MultiThreadedServer):
                 'error': 'Conexion con logger fallida'
             }
         elif state.hold_event.wait(10):
-            print('No wait')
+            
             state = storage.get_state(state.id)
             if state is None:
                 #TODO ver que pasa aqui !!!!!!!!!!
@@ -678,12 +673,12 @@ class EntryPointServerTheaded(MultiThreadedServer):
     #-------------------- RETWEET ----------------------#
 
     def retweet_request_from_client(self, id:int,task: tuple[socket.socket,object],event:Event, storage, data: dict):
-        print('Llego al entry')
+        
         token = data['token']
         nick = data['nick']
         date = data['date']
         nick_profile = data['nick_profile']
-        print('Parseo bien')
+        
 
         state = storage.insert_state()
         message = {
@@ -695,10 +690,10 @@ class EntryPointServerTheaded(MultiThreadedServer):
             'nick_profile': nick_profile,
             'id_request': state.id
         }
-        print('Mensaje hecho')
+        
 
         good, error = self.try_send_logger(message)
-        print('Try_send hecho')
+        
         if not good:
             msg = {
                 'type': ENTRY_POINT,
@@ -739,7 +734,7 @@ class EntryPointServerTheaded(MultiThreadedServer):
         try:
             task[0].send(util.encode(msg))
             task[0].close()
-            print(msg)
+            
             self.print('RETWEET_RESPONSE TO CLIENT: ', task[1][0])
         except Exception as e:
             self.print(f'RETWEET_RESPONSE to CLIENT {task[1][0]} (((ERRORR)))')
@@ -748,26 +743,23 @@ class EntryPointServerTheaded(MultiThreadedServer):
 
 
     def retweet_response_from_logger(self, id:int,task: tuple[socket.socket,object],event:Event, storage, data: dict):
-        print('ENTROOOOOOOOO')
+        
         with self.lock:
             self.stalker_loggers.update_IP(task[1][0])
-        print('AGREGO')
-        print(data['id_request'])
+        
         state = storage.get_state(data['id_request'])
-        print('STATE')
-        print(state)
+        
         task[0].close()
-        print('CLOSE')
+        
         state.desired_data = data
-        print('AQUIIIIIIIIIIIIIIIIIII')
-        print(data)
+        
         state.hold_event.set()
 
     #-------------------- FEED ----------------------#
 
     def feed_request_from_client(self, id:int,task: tuple[socket.socket,object],event:Event, storage, data: dict):
         
-        print('FEEEEEED from clients')
+        
         token = data['token']
         nick = data['nick']        
 
@@ -779,10 +771,10 @@ class EntryPointServerTheaded(MultiThreadedServer):
             'nick': nick,            
             'id_request': state.id
         }
-        print(message)
+        
 
         good, error = self.try_send_logger(message)
-        print('Llego al entry la respuesta')
+        
         if not good:
             msg = {
                 'type': ENTRY_POINT,
@@ -860,7 +852,7 @@ class EntryPointServerTheaded(MultiThreadedServer):
         event.wait(rand.randint(20,60))
         while not event.is_set():
             dirs_to_stalk = self.stalker_entrys.refresh_dirs()
-            print('STALKEANDO Entrys: ', dirs_to_stalk)
+            
             for dir in dirs_to_stalk:
                 try:
                     s = socket.socket(AF_INET, SOCK_STREAM)
