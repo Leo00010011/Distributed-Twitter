@@ -157,16 +157,14 @@ class ChordServer:
         self.max_id = None
         self.thread_count = 100
         self.thread_count_Lock = Lock()
+        self.max_id = int(''.join(['f' for _ in range(64)]) ,16)
         if id == None: 
-            self.max_id = int(''.join(['f' for _ in range(64)]) ,16)
             self.id_hex = hashlib.sha256(self.ip.encode()).hexdigest()
             self.id = int(self.id_hex ,16)
         else:
-            self.max_id = 1000000
             self.id_hex = hex(id)[2:]
             self.id = id
         self.Ft: list[tuple[ChordNode,bool]] = [None]*floor(log2(self.max_id + 1))
-
         self.log: list[str] = []
         self.reps = [self.ip]
         self.response = {
@@ -472,7 +470,6 @@ class ChordServer:
             'IP':ip_list,
             'id_request':req_id
         }
-
         
         print(f'msg to send {json.dumps(msg_dict)}')
         self.send_soft(['127.0.0.1'],json.dumps(msg_dict),'outside_resp',util.PORT_GENERAL_LOGGER,5,have_recv = False)
@@ -724,8 +721,8 @@ class ChordServer:
         msg_dict = util.decode(raw_msg)
         if msg_dict['type'] == util.LOGGER:
             print(f'recived outside req for {msg_dict["hash"]}')
-            # nick_hash = hashlib.sha256(msg_dict['hash'].encode()).hexdigest()
-            nick_hash = hex(int(msg_dict['hash']))[2:]
+            nick_hash = hashlib.sha256(msg_dict['hash'].encode()).hexdigest()
+            # nick_hash = hex(int(msg_dict['hash']))[2:]
             print(nick_hash)
             msg_dict = {
                 'cmd': self.outside_cmd,
@@ -796,8 +793,8 @@ class ChordServer:
 
 #id = int(input())
 #pt = input() == 'si'
-#server = ChordServer('log',15000,'file',id = id, print_table= pt)
-#server.start()
+# server = ChordServer('log',15000,'file')
+# server.start()
 
 
 
