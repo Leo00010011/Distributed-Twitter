@@ -248,7 +248,7 @@ def transference_response_msg(block, table, data, over):
     return data
 
 def transference_request_msg(chord_id, table, over, block):
-    data = {
+    return {
             'type': LOGGER,
             'proto': TRANSFERENCE_REQUEST,
             'chord_id':chord_id,
