@@ -166,6 +166,7 @@ class ChordServer:
             self.id_hex = hex(id)[2:]
             self.id = id
         self.Ft: list[tuple[ChordNode,bool]] = [None]*floor(log2(self.max_id + 1))
+
         self.log: list[str] = []
         self.reps = [self.ip]
         self.response = {
@@ -269,9 +270,13 @@ class ChordServer:
                 self.update_log(str(e))
                 return
             self.update_log(f'recived: {parsed_msg}')
-            self.response[parsed_msg['cmd']](parsed_msg ,socket_client ,addr_client)
+            try:
+              self.response[parsed_msg['cmd']](parsed_msg ,socket_client ,addr_client)
+            except:
+              return
             with self.thread_count_Lock:
                 self.thread_count += 1
+
         return dispatcher
 
     def get_some_node(self):
@@ -467,9 +472,11 @@ class ChordServer:
             'IP':ip_list,
             'id_request':req_id
         }
+
         
         print(f'msg to send {json.dumps(msg_dict)}')
         self.send_soft(['127.0.0.1'],json.dumps(msg_dict),'outside_resp',util.PORT_GENERAL_LOGGER,5,have_recv = False)
+
         print(f'end outside req')
         self.update_log(f'end outside req')
 
@@ -484,8 +491,11 @@ class ChordServer:
 
     def rec_get_succ_resp(self ,msg ,socket_client ,addr):
         self.update_log('start rec get_succ_resp')
-        holder = self.state_storage.get_state(msg['req_id'])
-        holder.desired_data = ChordNode.build_from_msg(msg['node'])
+
+        holder = self.state_storage.get_state(msg.req_id)
+        if holder is None:
+            return
+        holder.desired_data = ChordNode(msg.id ,msg.id_hex ,addr[0] ,msg.as_max)
         holder.hold_event.set()
         self.state_storage.delete_state(msg['req_id'])
         socket_client.send('Ok'.encode())
@@ -783,10 +793,12 @@ class ChordServer:
 
 
 
-id = int(input())
-pt = input() == 'si'
-server = ChordServer('log',15000,'file',id = id, print_table= pt)
-server.start()
+
+#id = int(input())
+#pt = input() == 'si'
+#server = ChordServer('log',15000,'file',id = id, print_table= pt)
+#server.start()
+
 
 
 

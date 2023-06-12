@@ -67,7 +67,7 @@ class ShellClient():
                 args = command.split()
                 # Ver Nuevos Dweets
                 if args[0] == "1" and len(args) == 1:
-                    pass
+                    self.feed()
                 # Crear Dweet
                 elif args[0] == "2" and len(args) == 1:
                     self.create_tweet()
@@ -200,42 +200,45 @@ class ShellClient():
                 
     def see_profile(self):
 
-        util.clear()
-        self.print_Dwitter()
-        print()
         while True:            
+            util.clear()
+            self.print_Dwitter()
+            print()
             print('<--- Ver Perfil --->')
             print('Paso 1: Ingrese el Nick del Usuario')
             print('> ', end='')
             nick = input()
 
             block = 0
+            temp = []
+            i = 0
             while True:
-                succesed, data_profile, over = self.client.profile(nick, self.token, self.nick, block)
-                i = block*10
+                succesed, data_profile, over = self.client.profile(nick, self.token, self.nick, block)                
                 if succesed:
                     tweet = data_profile['tweets']
                     retweet = data_profile['retweets']
                     
-                    print('|======< Inicio del Perfil >======|')
-                    
-                    
+                    print('|======< Dweets del Perfil >======|')
                     for t in tweet:
-                        print(f'{i} Tweet de {nick} del {t["date"]}:\n')
+                        print(f'{i} Tweet de {nick} del {t["date"]}:')
                         print(t["text"])
+                        print()
+                        temp.append(t)
                         i+=1
+                    print('|======< FIN de los Dweets >======|')
                     
-                    for r in retweet: 
-                        print(f'{i} ReTweet de {r["alias"]} del {r["date_retweet"]}')
-                        print(f'Tweet Original de {r["nick"]} del {r["date_tweet"]}:\n')
+                    print('|======< ReDweets del Perfil >======|')
+                    for r in retweet:
+                        print(f'{i} ReTweet de {r["alias"]} del {r["date_retweet"]}\n')
+                        print(f'Tweet Original de {r["nick"]} del {r["date_tweet"]}:')
                         print(r["text"])
+                        print()
+                        temp.append(r)
                         i+=1
-                    
+                    print('|======< FIN de los ReDweets >======|')
+                                        
                     if over:
                         print('|======< Fin del Perfil >======|')
-                        break
-                    print('Pulse ENTER para ver mas, o escriba "q" para terminar con este usuario')
-                    if input() == 'q':
                         break
                     block += 1
                 else:
@@ -243,10 +246,10 @@ class ShellClient():
                     print('<+++++ Error +++++>')
                     print(data_profile)
                     print('<+++++|+++++|+++++>')
-                    print('Pulse ENTER para volver a intentar, o escriba "q" para terminar con este usuario')
+                    print('Pulse "r" para volver a intentar, o pulse ENTER en otro caso')
                     inp = input()
-                    if inp != 'q':
-                        return
+                    if inp == 'r':
+                        break                    
             print('Pulse ENTER para ver otro perfil, o escriba "q" para volver al menu principal')
             if input() == 'q':
                 break
@@ -315,40 +318,90 @@ class ShellClient():
             else:
                 break
     
+                    
     def feed(self):
 
         util.clear()
         self.print_Dwitter()
-        print()
+        print()        
+        
+        temp = []
         while True:            
-            print('<--- Feed --->')
-
-            succesed, tweets_list = self.client.feed(self.token, self.nick)
+            succesed, things = self.client.feed(self.token, self.nick)            
             if succesed:
-                if len(tweets_list) > 0:
-                    i = 0
-                    self.cache.add_many_something(tweets_list)
-                    for date, text, nick, nick_original, date_original_tweet in tweets_list:                        
-                        if nick_original is None:
-                            print(f'{i} Tweet de {nick} del {date}:\n')
-                            print(text)
-                        else:
-                            print(f'{i} ReTweet de {nick} del {date}')
-                            print(f'Tweet Original de {nick_original} del {date_original_tweet}:\n')
-                            print(text)
-                else:
-                    print('No hay Dweets, ni ReDweets nuevos')                
+                print(things)                
             else:
                 print('Ha ocurrido un ERROR :"(')
                 print('<+++++ Error +++++>')
-                print(tweets_list)
+                print(things)
                 print('<+++++|+++++|+++++>')
-            
-            print()
-            print('Pulse ENTER para volver a cargar, o escriba "q" para regresar al menu principal')
+            print('Pulse ENTER para volver a intentar, o escriba "q" para terminar')
             inp = input()
-            if inp != 'q':
-                return
+            if inp == 'q':
+                break
+            '''
+            i = block*10
+            if succesed:
+                tweet = data_profile['tweets']
+                retweet = data_profile['retweets']
+                
+                print('|======< Dweets del Perfil >======|')
+                for t in tweet:
+                    print(f'{i} Tweet de {nick} del {t["date"]}:')
+                    print(t["text"])
+                    print()
+                    temp.append(t)
+                    i+=1
+                print('|======< FIN de los Dweets >======|')
+                
+                print('|======< ReDweets del Perfil >======|')
+                for r in retweet:
+                    print(f'{i} ReTweet de {r["alias"]} del {r["date_retweet"]}\n')
+                    print(f'Tweet Original de {r["nick"]} del {r["date_tweet"]}:')
+                    print(r["text"])
+                    print()
+                    temp.append(r)
+                    i+=1
+                print('|======< ReDweets del Perfil >======|')
+                
+                repeat = True
+                while repeat:
+                    print('Escriba el numero del Dweet o ReDeweet que desea ReDweetear. En caso contrario presione ENTER')
+                    try:
+                        inpu = int(input())
+                        if 0 <= inpu < len(temp):
+                            print('RETWEET desde el client')
+                            print(temp[inpu])
+                            if 'date_retweet' in temp[inpu].keys():
+                                good, retweet = self.client.retweet(self.token, self.nick, temp[inpu]["nick"], temp[inpu]["date_tweet"])
+                            else:
+                                good, retweet = self.client.retweet(self.token, self.nick, temp[inpu]["alias"], temp[inpu]["date"])
+                            print('RETWEET recibido al cliente')
+                            if good:
+                                print('ReDweet realizado con EXITO')
+                            else:
+                                print('ReDweet NOOOOO realizado con EXITO')
+                    except:
+                        repeat = False
+
+                if over:
+                    print('|======< Fin del Perfil >======|')
+                    break
+                print('Pulse ENTER para ver mas, o escriba "q" para terminar con este usuario')
+                if input() == 'q':
+                    break
+                block += 1
+            else:
+                print('Ha ocurrido un ERROR :"(')
+                print('<+++++ Error +++++>')
+                print(data_profile)
+                print('<+++++|+++++|+++++>')
+                print('Pulse ENTER para volver a intentar, o escriba "q" para terminar con este usuario')
+                inp = input()
+                if inp != 'q':
+                    return
+            '''
+
 
 
 s = ShellClient()
