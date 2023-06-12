@@ -32,7 +32,7 @@ class Follow(Model):
 class Tweet(Model):
     text = CharField(256)
     user = ForeignKeyField(User)
-    date = DateTimeField(default=datetime.datetime.now())
+    date = DateTimeField()
     class Meta:
         database = main_db
 
@@ -40,7 +40,7 @@ class ReTweet(Model):
     user = ForeignKeyField(User)
     nick = CharField(16)
     date_tweet = DateTimeField()
-    date_retweet = DateTimeField(default=datetime.datetime.now())
+    date_retweet = DateTimeField()
 
     class Meta:
         database = main_db

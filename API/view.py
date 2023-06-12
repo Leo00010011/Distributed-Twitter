@@ -8,7 +8,8 @@ except:
 
 def CreateUser(name, alias, password, alias_hash):
     try:
-        User.create(name= name, alias=alias, password=password, alias_hash = alias_hash)
+        if not User.select().where(User.name== name, User.alias==alias, User.password==password, User.alias_hash == alias_hash).exists():
+            User.create(name= name, alias=alias, password=password, alias_hash = alias_hash)
         return True
     except Exception as e:
         print(e)
@@ -65,7 +66,8 @@ def CreateToken(user):
 def CreateTokenForced(nick, token):
     try:
         user = CheckUserAlias(nick)
-        Token.create(user_id= user, token= token)
+        if not Token.select().where(Token.user_id== user, Token.token== token).exits():
+            Token.create(user_id= user, token= token)
         return True
     except:
         return False
@@ -94,26 +96,31 @@ def RemoveToken(nick, token):
         return True
     except:
         return False
-def CreateTweet(text, nick, date=None):
+def CreateTweet(text, nick, date=None):    
     try:
         user = User.select().where(User.alias == nick).get()
         if user:
             if date is None:
-                Tweet.create(user= user, text= text)
-            else: Tweet.create(user= user, text= text, tweet_date = date)
+                if not Tweet.select().where(Tweet.user== user, Tweet.text== text, Tweet.date == date).exists():
+                    Tweet.create(user= user, text= text)
+            else:
+                if not Tweet.select().join(User).where(User.alias== nick, Tweet.text== text, Tweet.date == date).exists():
+                    Tweet.create(user= user, text= text, date = date)
             return True
         else:
             return False
     except:
         return False
 
-def CreateReTweet(user_id, nick, date, retweet_date = None):
-    try:
+def CreateReTweet(user_id, nick, date, retweet_date = None):    
+    try:    
         user_id = CheckUserAlias(user_id)
         if retweet_date is None:
-            ReTweet.create(user = user_id, nick= nick, date_tweet = date)
+            if not ReTweet.select().where(ReTweet.user == user_id, ReTweet.nick ==nick, ReTweet.date_tweet== date).exists():
+                ReTweet.create(user = user_id, nick= nick, date_tweet = date)
         else: 
-            ReTweet.create(user = user_id, nick= nick, date_tweet = date, date_retweet = retweet_date)
+            if not ReTweet.select().join(User).where(User.alias== nick, ReTweet.date_tweet== date, ReTweet.date_retweet == retweet_date).exists():
+                ReTweet.create(user = user_id, nick= nick, date_tweet = date, date_retweet = retweet_date)
         return True
     except: 
         return False

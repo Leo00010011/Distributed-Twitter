@@ -1,6 +1,6 @@
 import API.client as client
 import API.util as util
-
+import random
 class ShellClient():
 
     def __init__(self) -> None:
@@ -255,6 +255,24 @@ class ShellClient():
                     print('<+++++ Error +++++>')
                     print(data_profile)
                     print('<+++++|+++++|+++++>')
+
+                    if nick in self.cache.profiles:
+                        publishes = list(self.cache.profiles[nick])
+                        if len(publishes)>0:
+                            print('Mostrando Cache')
+                            print(publishes)
+                            for thing in random.sample(publishes, min(10, len(publishes))):
+                                if thing[3] is None:
+                                    print(f'Tweet de {nick} del {thing[0]}:')
+                                    print(thing[1])
+                                    print()
+                                else:
+                                    print(f'{i} ReTweet de {nick} del {thing[0]}')
+                                    print(f'Tweet Original de {thing[2]} del {thing[3]}:')
+                                    print(thing[1])
+                                    print()
+
+                    
                     #saved = self.cache.profiles.get(nick, None)
                     #if saved is not None:
                     #    print('Mostrando datos guardados:')
@@ -362,13 +380,29 @@ class ShellClient():
                         print(f'{i} ReTweet de {thing[2]} del {thing[0]}')
                         print(f'Tweet Original de {thing[3]} del {thing[4]}:')
                         print(thing[1])
-                        print()                
-
+                        print()              
+                if len(things) > 0:
+                    retweting = True
+                    while retweting:
+                        print('Seleccione el Dweet que desea redweetear o simplemente pulse ENTER')
+                        try:
+                            option = int(input())
+                            if 0 <= option < len(things):
+                                done, error_re = self.client.retweet(self.token, self.nick,  thing[2], thing[0])
+                                if done:
+                                    print('ReDweet realizado con EXITO')
+                                else:
+                                    print('ReDweet FALLIDO')
+                                    print('<+++++ Error +++++>')
+                                    print(error_re)
+                                    print('<+++++|+++++|+++++>')
+                        except:
+                            retweting = False
             else:
                 print('Ha ocurrido un ERROR :"(')
                 print('<+++++ Error +++++>')
                 print(things)
-                print('<+++++|+++++|+++++>')
+                print('<+++++|+++++|+++++>')                
             print('Pulse ENTER para volver a intentar, o escriba "q" para terminar')
             inp = input()
             if inp == 'q':

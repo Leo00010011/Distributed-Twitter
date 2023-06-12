@@ -9,10 +9,25 @@ import socket
 from socket import AF_INET, SOCK_STREAM
 
 def send_and_close(ip, port, data):
-    skt = socket.socket(AF_INET,SOCK_STREAM)
-    skt.connect((ip,port))
-    skt.send(util.encode(data))
-    skt.close()
+    try:
+        skt = socket.socket(AF_INET,SOCK_STREAM)
+        skt.connect((ip,port))
+        skt.send(util.encode(data))
+        skt.close()
+        return True
+    except:
+        pass
+    finally:
+        skt.close()
+    return False
+
+def many_send_and_close(ips, port, data):
+    for ip in ips:
+        if send_and_close(ip, port, data):
+            return True
+    return False
+
+
 
 def only_send(ip, port, data):
     skt = socket.socket(AF_INET,SOCK_STREAM)

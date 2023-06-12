@@ -82,41 +82,46 @@ class EntryPointServerTheaded(MultiThreadedServer):
         l = dirs[:5]
         return l
     
-    def add_task(self, new_task):
-        for ip, tasks in self.pending_tasks.items():
-            repeat_task = False
-            for i, task in enumerate(tasks):
-                if task == new_task:
-                    repeat_task = True
-                    break
-            if repeat_task:
-                continue
-            tasks.append(new_task)
-    
+    def add_task(self, proto, data, one_ip= None):
+        if one_ip is None:
+            for ip, tasks in self.pending_tasks.items():
+                if (proto, data) not in tasks:
+                    tasks.append((proto, data))
+        else:
+            if (proto, data) not in self.pending_tasks[one_ip]:
+                self.pending_tasks[one_ip].append((proto, data))
+
     def send_pending_tasks(self, event: Event):
-        self.execute_pending_tasks = True
-        event.wait(rand.randint(3,30))
+        self.execute_pending_tasks = True        
         while not event.is_set():
             print('Tareas Pendientes:')
             print(self.pending_tasks)
             for ip, tasks in self.pending_tasks.items():
-                for i, task in enumerate(tasks.copy()):
+                print('IMPRIMIENDO TAREAS')                
+                print(tasks)
+                i = 0
+                while i < len(tasks):                    
                     try:
                         msg = {
-                            'type': ENTRY_POINT,
-                            'proto': task[0],
-                            'ip': task[1]
+                            'type':  ENTRY_POINT,
+                            'proto': tasks[i][0],
+                            'ip':  tasks[i][1]
                         }
+                        print('CREOOOOOOO EL MENSAJEEEEEE')
                         s = socket.socket(AF_INET, SOCK_STREAM)
                         s.connect((ip, PORT_GENERAL_ENTRY))
+                        print('SE CONECTOOOOOOOO')
                         s.send(util.encode(msg))
                         s.close()
-                        self.print(f'TAREA PENDIENTE "{task[0]}:{task[1]}" ENVIADA a {ip}:{PORT_GENERAL_ENTRY}')
+                        print(f'TAREA PENDIENTE "{tasks[i][0]}:{tasks[i][1]}" ENVIADA a {ip}:{PORT_GENERAL_ENTRY}')
                         tasks.pop(i)
-                        event.wait(rand.randint(1,5))
+                        i -= 1
                     except:
-                        self.print(f'TAREA PENDIENTE "{task[0]}:{task[1]}" NO enviada a {ip}:{PORT_GENERAL_ENTRY}')
-            event.wait(rand.randint(3,30))
+                        print(f'TAREA PENDIENTE "{tasks[i][0]}:{tasks[i][1]}" NO enviada a {ip}:{PORT_GENERAL_ENTRY}')
+                        break
+                    i += 1
+                    event.wait(rand.randint(1,5))
+            event.wait(rand.randint(4,10))
         self.execute_pending_tasks = False
         print('END Pending Tasks')
 
@@ -866,6 +871,9 @@ class EntryPointServerTheaded(MultiThreadedServer):
                     self.stalker_entrys.update_IP(dir)
                 except:
                     self.print('ALIVE ENTRY Conexion perdida con: ', dir)
+                    with self.lock:
+                        for _, ip in self.stalker_loggers.list:
+                            self.add_task(ADD_LOGGER, ip, dir)
                 finally:
                     s.close()
             event.wait(rand.randint(20,60))
@@ -950,7 +958,7 @@ class EntryPointServerTheaded(MultiThreadedServer):
             'type': ENTRY_POINT,
             'proto': INSERTED_LOGGER_RESPONSE,            
         }
-        self.add_task((ADD_LOGGER, task[1][0]))
+        self.add_task(ADD_LOGGER, task[1][0])
         task[0].send(util.encode(msg))
         task[0].close()
 
