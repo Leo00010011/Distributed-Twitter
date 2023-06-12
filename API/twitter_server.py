@@ -455,7 +455,7 @@ class TweeterServer(MultiThreadedServer):
                         self.add_task(ADD_TWEET, {
                             'text': data_dict['text'],
                             'alias': data_dict['nick'],                        
-                            'date': str(data)
+                            'date': str(date)
                         })
                     #### AGREGADO A LAS TAREAS PENDIENTES #####
                     data = create_tweet_response_msg(True, None, id_request)
