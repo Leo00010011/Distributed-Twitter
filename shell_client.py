@@ -220,6 +220,7 @@ class ShellClient():
                     
                     print('|======< Dweets del Perfil >======|')
                     for t in tweet:
+                        print('Tweet ', t)
                         self.cache.add_something(t["date"], t["text"], nick, None, None)
                         print('Guadado en Cache')
                         print(f'{i} Tweet de {nick} del {t["date"]}:')
@@ -254,17 +255,17 @@ class ShellClient():
                     print('<+++++ Error +++++>')
                     print(data_profile)
                     print('<+++++|+++++|+++++>')
-                    saved = self.cache.profiles.get('nick', None)
-                    if saved:
-                        print('Mostrando datos guardados:')
-                        for i, (date, (text, nick_original, date_original)) in enumerate(saved.items()):
-                            if nick_original:
-                                print(f'{i} ReTweet de {nick} del {date}\n')
-                                print(f'Tweet Original de {nick_original} del {date_original}:')
-                                print(text)
-                            else:
-                                print(f'{i} Tweet de {nick} del {date}:')
-                                print(text)
+                    #saved = self.cache.profiles.get(nick, None)
+                    #if saved is not None:
+                    #    print('Mostrando datos guardados:')
+                    #    for i, (date, (text, nick_original, date_original)) in enumerate(saved.items()):
+                    #        if nick_original:
+                    #            print(f'{i} ReTweet de {nick} del {date}\n')
+                    #            print(f'Tweet Original de {nick_original} del {date_original}:')
+                    #            print(text)
+                    #        else:
+                    #            print(f'{i} Tweet de {nick} del {date}:')
+                    #            print(text)
 
                     print('Pulse "r" para volver a intentar, o pulse ENTER en otro caso')
                     inp = input()
