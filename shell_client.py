@@ -220,6 +220,8 @@ class ShellClient():
                     
                     print('|======< Dweets del Perfil >======|')
                     for t in tweet:
+                        self.cache.add_something(t["date"], t["text"], nick, None, None)
+                        print('Guadado en Cache')
                         print(f'{i} Tweet de {nick} del {t["date"]}:')
                         print(t["text"])
                         print()
@@ -229,6 +231,8 @@ class ShellClient():
                     
                     print('|======< ReDweets del Perfil >======|')
                     for r in retweet:
+                        self.cache.add_something(r["date_retweet"], t["text"], r["alias"], r["nick"], r["date_tweet"])
+                        print('Guadado en Cache')
                         print(f'{i} ReTweet de {r["alias"]} del {r["date_retweet"]}\n')
                         print(f'Tweet Original de {r["nick"]} del {r["date_tweet"]}:')
                         print(r["text"])
@@ -335,6 +339,8 @@ class ShellClient():
             if succesed:                                
                 for i, thing in enumerate(things):
                     print('Archivo uno ', thing)
+                    self.cache.add_something(thing[0], thing[1], thing[2], thing[3], thing[4])
+                    print('Guadado en Cache')
                     if thing[3] is None:
                         print(f'{i} Tweet de {thing[2]} del {thing[0]}:')
                         print(thing[1])

@@ -22,6 +22,7 @@ class ShellTweeter():
     def options(self):          
         print('<--- Opciones --->')
         print('1. Start')
+        print('2. Chord')
         print('<---+---==---+--->')
         
     def run(self):
@@ -30,6 +31,8 @@ class ShellTweeter():
             option = input()
             if option == '1':
                 self.begin_start()
+            elif option == '2':
+                print(self.tweet_server.chord_id)
             else:
                 print('Opcion incorrecta')
 
