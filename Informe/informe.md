@@ -19,6 +19,11 @@ Las acciones que pueden realizar los usuarios son:
 >- Ver el perfil de algún usuario
 >- Pedir nuevos Dweets
 
+#### Registrarse en el sistema 
+
+Para registrarse el usuario debe proveer un *Nombre*, un *Alias* que ha de ser único y por el que se le identificará por los restantes usuarios para poder seguirlo y ver su perfil, y una *Contraseña*. 
+
+La acción de un usuario de registrarse 
 ## Almacenamiento de información
 
 ## Comunicación de Servidores
