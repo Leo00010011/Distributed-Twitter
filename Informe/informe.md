@@ -1,7 +1,7 @@
 # <center>Tweeter Distribuído 📱</center>
 
 ## Equipo:
-- Lazaro Daniel González Martínez
+- Lázaro Daniel González Martínez
 - Alejandra Monzón Peña
 - Leonardo Ulloa Ferrer
 
@@ -12,7 +12,7 @@ Dweeter (Distributed Tweeter), es una red social que permite a los usuarios comp
 Las acciones que pueden realizar los usuarios son: 
 
 >- Registrarse en el sistema
->- Loggearse
+>- Iniciar Sesión
 >- Publicar un Dweet
 >- Re-publicar un Dweet
 >- Seguir a otro usuario
@@ -26,14 +26,14 @@ Para registrarse el usuario debe proveer un **Nombre**, un **Nick** que ha de se
 
 La acción de un usuario de registrarse será exitosa si el **Nick** que escoja no está en uso, en caso contrario recibirá un mensaje informándole que debe buscar otro Nick.
 
-#### Loggearse 
-La acción de loggearse requiere que el usuario esté registrado en el sistema, para loggearse el usuario debe poner su **Nick** y **Contraseña**, si 
-los datos son introducidos correctamnete el loggeo será exitoso, en caso que la contraseña no se corresponda con el Nick o que el Nick no esté registrado se informará al usuario con un mensaje de combinación de Nick/Contraseña incorrecta.
+#### Iniciar Sesión 
+La acción de iniciar sesión requiere que el usuario esté registrado en el sistema. Para loggearse el usuario debe poner su **Nick** y **Contraseña**, si 
+los datos son introducidos correctamente el loggeo será exitoso, en caso que la contraseña no se corresponda con el Nick o que el Nick no esté registrado se informará al usuario con un mensaje de combinación de Nick/Contraseña incorrecta.
 
 Para poder publicar, seguir, re-publicar, ver perfiles y pedir visualizar Dweets el usuario debe estar loggeado en el sistema.
 
 #### Publicar Dweet 
-Publicar un Dweet requiere que el ususario introduzca en texto de la publicación, el cual no debe exceder los 225 caracteres.
+Publicar un Dweet requiere que el usuario introduzca el texto de la publicación, el cual no debe exceder los 225 caracteres.
 
 Si el usuario está loggeado y el Dweet cumple las restricciones de tamaño, entonces se publicará el Dweet y este se agregará a su perfil.
 
@@ -42,13 +42,13 @@ La acción de re-publicar un Dweet requiere que el usuario seleccione un Dweet e
 
 #### Seguir un usuario
 
-Un usuario para seguir a otro debe conocer su **Nick** y decir que quiere comenzar a seguir a ese usuario, si el Nick del usuario al que quiere seguir exisre, se comenzará a seguir a este usuario. Seguir a un usuario implica que cuando se pida ver nuevos Dweets las publicaciones y re-publicaciones de este usuario van a eventualmente aparcer, manteniendote al tanto de su contenido.
+Un usuario para seguir a otro debe conocer su **Nick** y decir que quiere comenzar a seguir a ese usuario, si el Nick del usuario al que quiere seguir existe, comenzará a seguir a este usuario. Seguir a un usuario implica que cuando se pida ver nuevos Dweets las publicaciones y re-publicaciones de este usuario van a eventualmente aparecer, manteniéndose al tanto de su contenido.
 
 #### Ver perfil
 Para ver un perfil se debe introducir el **Nick** del usuario cuyo perfil se desea ver, esto mostrará todos los Dweets y ReDweets hechos por este usuario. 
 
 #### Pedir nuevos Dweets
-Esta acción muestra un conjuto de Dweets y ReDweets de usuarios a los que estás siguiendo, es una acción que mientras mas veces se repita más cantidad de contenido podrás visualizar e informarte de publicaciones que aun nohayas visto.
+Esta acción muestra un conjuto de Dweets y ReDweets de usuarios a los que estás siguiendo, es una acción que mientras mas veces se repita más cantidad de contenido se podrá visualizar e se informará de publicaciones que aún no se hayan visto.
 
 #### Cerrar Sesión 
 
@@ -60,32 +60,36 @@ El usuario para poder realizar todas las acciones disponibles utilizará una con
 
 ## Almacenamiento de información
 
-Para almacenar la información se utilizó una base de datos relacional en SQLite, el diseño de la misma y las operaciones de inserción, consulta, eliminación de datos se manejó con la librería `Pewee` de `Python`, que funciona muy similar a la ORM de Django.
+Para almacenar la información se utilizó una base de datos relacional en SQLite, el diseño de la misma y las operaciones de inserción, consulta, eliminación de datos se manejó con la librería `Peewee` de `Python`, que funciona muy similar a la ORM de Django.
 
 ### Almacenamiento distribuído
 
-Como los servidosres de datos (*TweeterServers*) están dispuestos en froma de anillo y se comunican para buscar los recursos mediante una *DHT* con un algoritmo *Chord*, entonces se aprovecha el identificador de cada Nodo del Chord para repartir la información a almacenar. Como en el algoritmo Chord cada Nodo responde por los recursos que tengan identificador menor que el de dicho Nodo y mayor que el de su antecesor en la DHT, y aprovechando las caracteristicas propias de las Redes Sociales, en que todo requiere de un usuario registrado para poder intercambiar, utilizamos la misma función de *hash* con la que se decidió el identificador del Nodo para hashear los Nicks de los usuarios, de modo que todos los recursos (publicaciones, Nicks de a quienes sigue, Datos de loggeo, etc) relativos a usuarios con identificador en el mismo segmento del chord se encuentra en un mismo Nodo; mientras que usuarios con identifiador en dos secciones diferentes den anillo del chor tienen sus datos almacenados en Nodos diferentes. 
+Como los servidosres de datos (*TweeterServers*) están dispuestos en forma de anillo y se comunican para buscar los recursos mediante una *DHT* con un algoritmo *Chord*, entonces se aprovecha el identificador de cada Nodo del Chord para repartir la información a almacenar. Como en el algoritmo Chord cada Nodo responde por los recursos que tengan identificador menor que el de dicho Nodo y mayor que el de su antecesor en la DHT, y aprovechando las características propias de las Redes Sociales, en que todo requiere de un usuario registrado para poder intercambiar, utilizamos la misma función de *hash* con la que se decidió el identificador del Nodo para hashear los Nicks de los usuarios, de modo que todos los recursos (publicaciones, Nicks de a quienes sigue, Datos de loggeo, etc) relativos a usuarios con identificador en el mismo segmento del chord se encuentran en un mismo Nodo; mientras que usuarios con identifiador en dos secciones diferentes del anillo del chord tienen sus datos almacenados en Nodos diferentes. 
 
 Con esta forma de distribuir los datos, mientras más crezca el número de usuarios de Dweeter, mayor cantidad de Nicks de usuario existirán y más equilibrada estará la cantidad de información almacenada en cada uno de los Nodos.
 
-## Tipos de Servidores y arquitectura de la Red
+## Componentes y arquitectura de la Red
 
-En el sistema distribuído Dweeter, exiten 4 tipos de servidores, cada uno con un comportamiento y funcionalidades específicas en la red.
+En el sistema distribuído Dweeter, exiten 4 componentes principales, cada una con un comportamiento y funcionalidades específicas en la red.
 
->-  ClientServer
+>-  Client
 >-  EntryServer
 >-  ChordServer
 >-  TweeterServer
 
 Cada computadora de la red tiene alguno de estos comportamientos asignados y en base a esto se establecen los protocolos de comunicación entre ellos para el manejo de datos.
 
-A continuación explicamos con mayor detalle las funcionalidades y comportamiento de cada tipo de servidor.
+A continuación explicamos con mayor detalle las funcionalidades y comportamiento de cada componente.
 
 
-#### ClientServer
+#### Client
+
+Ofrece la funcionalidades para establecer la comunicación con los servicios generales del Dweeter, desde la perspectiva del cliente o consumidor. Es la componente más cercana al usuario. 
 
 
 #### EntryServer
+
+Es la componente intermedia entre `Client`, `ChordServer`, y `TweeterServer`. Se encarga de recepcionar las peticiones del `Client`, reconocerlas, validarlas y hacer la petición al `TweeterServer`. Sirve para velar en parte por la seguridad del Sistema, al obligar la comuniación `Client-EntryServer` y `EntryServer-TweeterServer`, lo implica que el `Client` aunque quiera comunicarse con el `EntryServer` no podría hacerlo, o al menos no de forma trivial. Por otra parte al servir de mediadora, está capacitada para percibir cuándo hay un fallo en la red y notificar al `Client`. Además la interacción con `ChordServer` es la mínima necesaria para introducirlo al anillo del Chord, aclarando que realmente NO es el `EntryServer` quien decide dónde va el nuevo `ChordServer` en el anillo, sino que a este se le da el "contacto" de algún otro `ChordServer` ya insertado, y haciendo el algoritmo de Chord, este se podrá ubicar correctaemnte y hacer las transferencias de informacion que les sean necesarias.
 
 #### ChordServer
 
@@ -120,11 +124,72 @@ Con el otro servidor que interactuan los TweeterServer es el EntryServer, el cua
 
 ![](img.png)
 
-## Comunicación de Servidores
+# Comunicación de Componentes
+
 
 Para la comunicación entre las compomentes del sistema se creó un protocolo de comunicación. Cada mensaje enviado en la red tiene la estructura [Tipo | Protocolo | Datos], de modod que cada Server pueda distinguir basándose en el *Tipo* del Server que le escibe y en el *Protocolo* del mensaje, cuáles son las acciones a realizar y cuales son los valores que están almacendaos en los *Datos*. 
 
 Los tipos disponibles son: `Client, Entry, Logger, Tweet, Chord`
 
 uno por cada Servidor que interviene,excepto los TweeterServer que por cuestion de comodidad responden tanto como tipo Logger como por tipo Tweet, para separar las funcionalidades de registro y loggeo del resto de manejo de Dweets y ReDweets.
+
+
+## Consultas
+
+El mecanismo base para hacer una consulta completa desde el cliente pasa por una serie de pasos:
+
+- El `Client` realiza la petición con un `EntryServer`, y mantiene la comunicación abierta hasta que se le responda.
+- El `EntryServer` le escribe a algún `TweeterServer` con la solicitud de la consulta que desea realizar, y cierra la conexión.
+- El `TweeterServer` le pide a su `ChordServer` correspondiente el ip del `TweeterServer` que debe tener la información solicitda y cierra la conexión.
+- Los `ChordServer` realizan la búsqueda con el algoritmo de Chord y al encontrar al indicado, se le escribe nuevamente al `TweeterServer` inicial, con el IP del servidor que puede responder la consulta, y se cierra la conexión.
+- Este `TweeterServer` le escribe al que tiene los datos que necesita, haciendo al solicitud, y cierra la conexión.
+- Al realizar la consulta, se le responde abriendo una nueva conexión.
+- Luego el `TweeterServer` inicial le responde por una nueva conexión, al `EntryServer` con los datos solicitados.
+- Y finalmente el `Client` recibe la respuesta de la consulta.
+
+Debemos aclarar algunas cosas de este proceso. La comunicación entre componentes NO `Client`, tiene sentido que se hagan abriendo y cerrando una conexión para preguntar, y hacer lo mismo para responder. Por qué? Pues, es un puerto menos utilizado que estará esperando una respuesta; al realizar la búsqueda con el Chord se formaría un arco de conexiones abiertas, que deberían esperar una respuesta por la misma conexión, y esto obligaría a dejar las conexiones mucho más tiempo abiertas, y en el caso de que una de estas intermedias se rompiera, la respuesta final no llegaría al `TweetServer`; y además hay consultas donde el `TweetServer` necesita hacer varias peticiones en vez de una sola. Por otra parte la conexión entre `Client` y `EntryServer` tiene sentido dejarla abierta ya que el Server no tendría forma de comunicarse con el cliente abriendo una nueva conexión, ya que para hacer esto, los `Client` deberían entonces tambíen estar escuchando por un puerto continuamente, y esta función la consideramos innecesaria de momento.
+
+Cosas importantes a tener en cuenta, es que cuando se realiza una consulta, tanto el `EntryServer` como el `TweeterServer` esperan un tiempo de seguridadpara recibir la respuesta, y si no la reciben antes de este tiempo, notifican un error. De esta manera se garantiza que los hilos con los que se realizan las peticiones no queden flotando e inutilizándose.
+
+## Stalking
+
+Este proceso consiste en "preguntar continuamente" a otra componente si está disponible en la red. La utiliza principalmente el `EntryServer`, para reconocer a los otros `EntryServer`y los `ChordServer` que están vivos. El funcionamiento es bastante sencillo:
+
+> Cada cierto tiempo aleatorio (con probabilidad uniforme) el `EntryServer` manda un mensaje con protocolo `ALIVE_REQUEST` a estos sevidores, esperando una respuesta, la cual de ser recibida, se actualiza el último tiempo de vida de dicha componente. En caso que no se reciba respuesta, este tiempo de vida no se actualiza, y poco tiempo después, por lo general, luego de 3 veces sin tener contacto con la componente, se considerará "muerta".
+
+Considerar una componente "muerta" tiene una interpretación diferente para cada tipo de componente.
+
+- En el caso de que un `ChordServer` se considere muerto por un `EntryPoint`, implica que cuando otro `ChordServer` se quiera introducir al anillo del Chord, el `EntryPoint` NO le recomendará el IP del `ChordServer` muerto, sino aleatoriamente otros que estén vivos. Además como en la implementación del Sistema, los Servidores `TweeterServer` y `ChordServer` se montan sobre la misma PC, sirve también para no incluir una componente `TweeterServer` caída, al solicitar servicios generales entrantes del `Client`, como iniciar sesión, ver perfil, etc...
+- En el caso de que un `EntryPoint` sea el muerto, entonces se añade a la `Lista de Tareas` de este (luego se verá mejor), enviar los IPs de los `ChordServer` que el vivo tiene, una vez que el `EntryPoint` muerto reaparezca.
+
+Note que el principal beneficio de este proceso de `Stalking` es que se evita los fallos producidos cuando una PC sale del Sistema. Pero en contraposición se genera conexiones extras en el red, lo cual podríamos pensar que recargaría esta; sin embargo note que al acosar a una componente se hace en luego de un tiempo random, lo cual posibilita que la red realmente no se sobrecargue, al menos en la mayoría del tiempo.
+
+## Tareas Pendientes
+
+Este proceso consiste en disponer de una lista de acciones que la componente actual debe realizar con otra componente, y debido a algún motivo no pudo hacerla en un comienzo pero tiene la necesidad de hacerla en algún momento. Además como parte de este proceso, está el hecho de enviar estas tareas. Por lo general quienes utilizan una lista de tareas pendientes son el `EntryServer` y el `TweetServer`.
+
+En sí el proceso consite un poco más a detalle en:
+> Llevar un diccionario con los IPs de las componentes a las que posiblemente se les podría enviar una acción retrasada, y su lista de acciones retrasadas. Cada cierto tiempo aleatorio (probabilidad uniforme) se envían las tareas retrasadas. Si estas llegan correctamente, se van eliminando del diccionario.
+
+El tipo de tarea pendiente varía según la componente que emite la acción:
+
+- En el caso de los `EntryServer`, las tareas pendientes, van más relacionadas con agregar un `TweeterServer` que se insertó en el anillo del Chord, para notificar al resto de `EntryServer`, que hay un nuevo IP válido de `TweeterServer` y/o `ChordServer` al que se le puede hacer alguna petición. Algo importante, es que 
+
+- En el caso de los `TweeterServer` sus tareas pendientes son internas con las réplicas dentro del Nodo. En este caso cuando un `TweeterServer` agregue una info nueva, está se añadirá a sus tareas pendientes, y luego de un rato, se enviará al destinatario final.
+
+Note que la lista de tareas de esta forma eventualmente actualizará a las componentes finales. En cuanto a la sobrecarga que pueda provocar en la red es similar a  la del `Stalking`, donde las peticiones no se realizan todas a la vez, sino entre tiempos aleatorios.
+
+## Inserción de un nuevo `ChordServer-TweeterServer`
+
+Cuando un nuevo `ChordServer-TweeterServer` se quiere insertar en el anillo del Chord, primero estable una comunicación con algún `EntryServer` para pedir algún `ChordServer` que ya esté en el anillo del Chord. Luego le pide a este insertarse y [Insertar cositas breves del Chino]. Finalmente cuando el Chord se inserta se comunica con el `EntryServer` para notificarle que se insertó correctamente, al igual que se comunica con su `TweeterServer` asociado para indicarle el id que le corresponde, sus sucesores, y sus hermanos.
+
+## Réplicas y Transferencia de Datos
+
+Cuando un nuevo `TweeterServer-ChordServer` se inserta al anillo del Chord este en un inicio debe saber cómo quiere insertarse, si como nuevo Nodo, o como réplica en otro nodo. En cualquiera de ambos casos por lo general ocurríra una trnasferencia de muchos datos, ya que:
+
+- En el caso de insertarse como nuevo nodo, deberá copiar los datos que le corresponden en su rango de hash asignado.
+- En el caso de insertarse como réplica dentro de un nodo, deberá replicar todos los datos que tenga el nodo.
+
+[Insertar muelita de como se realiza la transferencia]
+
 
