@@ -90,7 +90,7 @@ A continuación explicamos con mayor detalle las funcionalidades y comportamient
 #### ChordServer
 
 #### TweeterServer
-Este servidor es el encargado de trabajar con la base de datos y buscar que todo lo pedido por el usuario sea consistente: 
+Este servidor es el encargado de trabajar con la base de datos y buscar que todo lo pedido por el usuario sea consistente:
 
 - Que el usuario esté loggeado en las acciones que lo requieran
 - Que al usuario al que quieran seguir exista
@@ -100,10 +100,31 @@ Este servidor es el encargado de trabajar con la base de datos y buscar que todo
 
 Además de guardar en la base de datos los Dweets y ReDweets, nuevos Usuarios, Tokens de usuarios Loggeados, etc. 
 
-Para todo este manejo de la base de datos 
+Para el manejo de la base de datos utiliza las funciones existentes en el arcivo `view.py`.
 
+Este Servidor se comunica con otros de su mismo tipo con el objetivo de:
+>- Pedir información sobre la existencia de ciertos datos.
+>- Pedirles que guarden datos que les pertenecen.
+>- Replicar datos entre los servers dentro de un Nodo.
+>- Informar de su llegada al sistema y traspasar datos cuando se agrega un nuevo Nodo.
+
+La comunicación entre un TweeterServer y un ChordServer se emplea solamente para dos procesos:
+
+>- Cuando la computadora se agrega al sistema y como ChordServer y TweeterServer coexisten en una misma máquina, atendiendo a peticiones por puertos diferentes, una vez que el ChordServer inserta la computadora en el Nodo correspondiente se informa a sí mismo, por el puerto del TweeterServer la información necesaria para que el este pueda obtener los datos del Nodo al que pertenece. 
+>- Cuando un TweeterServer necesita contactar con otro, que tiene los datos de un ususario en específico; para esto se comunica con el ChordServer desde el otro puerto de la misma computadora y le solicita que haga la búsqueda en la DHT para conseguirle los IPs de los servidores del Nodo con el que desea contactar.
+
+Con el otro servidor que interactuan los TweeterServer es el EntryServer, el cual es el mediador entre los clientes y los TweeterServer.
+
+>- Los TweeterServer se comunican con los EntryServer para responder a los mensajes de estos informándoles que aun están activos en la red.
+>- Cuando un usuario quiere realizar cualquier acción en Dweeter, el EntryServer con el que conecte es el que se comunica con el TweeterServer y así se maneja la transacción de forma transparente para el usuario.
 
 ![](img.png)
 
 ## Comunicación de Servidores
+
+Para la comunicación entre las compomentes del sistema se creó un protocolo de comunicación. Cada mensaje enviado en la red tiene la estructura [Tipo | Protocolo | Datos], de modod que cada Server pueda distinguir basándose en el *Tipo* del Server que le escibe y en el *Protocolo* del mensaje, cuáles son las acciones a realizar y cuales son los valores que están almacendaos en los *Datos*. 
+
+Los tipos disponibles son: `Client, Entry, Logger, Tweet, Chord`
+
+uno por cada Servidor que interviene,excepto los TweeterServer que por cuestion de comodidad responden tanto como tipo Logger como por tipo Tweet, para separar las funcionalidades de registro y loggeo del resto de manejo de Dweets y ReDweets.
 
