@@ -78,12 +78,14 @@ En el sistema distribuído Dweeter, exiten 4 componentes principales, cada una c
 
 Cada computadora de la red tiene alguno de estos comportamientos asignados y en base a esto se establecen los protocolos de comunicación entre ellos para el manejo de datos.
 
+Para `EntryServer`, `ChordServer` y `TweeterServer`, los cuales son realmente los servidores fundamentales de la red, se tiene que para reponder a peticiones utilizan una piscina de hilos, es decir tienen el comportamiento de un `MultiThreadedServer`, el cual describiremos detalladamente en próximas secciones.
+
 A continuación explicamos con mayor detalle las funcionalidades y comportamiento de cada componente.
 
 
 #### Client
 
-Ofrece la funcionalidades para establecer la comunicación con los servicios generales del Dweeter, desde la perspectiva del cliente o consumidor. Es la componente más cercana al usuario. 
+Ofrece la funcionalidades para establecer la comunicación con los servicios generales del Dweeter, desde la perspectiva del cliente o consumidor. Es la componente más cercana al usuario.
 
 
 #### EntryServer
@@ -195,3 +197,7 @@ Para realizar una transferencia de datos correcta, el orden en que se transfiera
 
 >Para la transferencia de datos se requiere que el servidor nuevo envíe su `chord_id` para que así el otro servidor sepa que porción de la base de datos enviar. 
 Los datos se transfieren en bloques de 20 filas de la tabla cada vez.
+
+## Transparencia de las operaciones
+
+Cuando un cliente accede a cualquiera de las funcionalidades de Dweeter, todas las acciones que el sistema realice se mantienen transparentes para él. La única información que conoce un usuario es que se está comunicando con un servidor al que le está haciendo peticiones y que este le envía respuestas, pero jamás contacta siquiera con los `ChordServer-TweeterServer`, ni conoce que su información está fragmentada en distintas computadoras de la red. 
