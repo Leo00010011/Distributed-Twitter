@@ -201,10 +201,10 @@ class Cache:
         self.profiles = {}
 
     def add_something(self, date, text, nick, nick_original, date_original):
-        profile = self.profiles.get(nick)
+        profile = self.profiles.get(nick, None)
         if profile is None:
             self.profiles[nick] = {}
-        profile[date] = (text, nick_original, date_original)
+        self.profiles[nick][date] = (text, nick_original, date_original)
 
     def add_many_something(self, list):
         for date, text, nick, nick_original, date_original in list:
