@@ -192,7 +192,7 @@ Cuando un nuevo `TweeterServer-ChordServer` se inserta al anillo del Chord este 
 - En el caso de insertarse como réplica dentro de un nodo, deberá replicar todos los datos que tenga el nodo.
 
 Por este motivo, una vez insertado al anillo, la parte `ChordServer` le informa a la `TweeterServer` de ese ordenador mediante un mensaje con los datos `chord_id`, `succesors` y `siblings`, que son el identificador que tienen dentro del anillo, una lista con los IPs de sus sucesores en el anillo y una lista con los IPs de las otras máquinas de su propio Nodo(hermanos), respectivamente, esta última será vacía en el caso que sea el primero de ese Nodo. Basándose en esta información, el `TweeterServer` establecerá comunicación con alguno de sus hermanos en caso de tener, o con alguno de sus sucesores en caso contrario, creando un nuevo hilo para dicha comunicación.
-<<<<<<< HEAD
+
 
 Para realizar una transferencia de datos correcta, el orden en que se transfieran las tablas de la base de datos importa, debido a que los usuarios sun llaves foráneas en la mayoría de la tablas, la tabla de ususarios ha de ser la primera en copiarse. De este modo se van transfiriendo bloques de datos entre una computadora y la otra hasta que se hayan enviado toda la base de datos.
 
