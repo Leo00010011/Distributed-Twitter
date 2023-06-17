@@ -192,11 +192,32 @@ Cuando un nuevo `TweeterServer-ChordServer` se inserta al anillo del Chord este 
 - En el caso de insertarse como réplica dentro de un nodo, deberá replicar todos los datos que tenga el nodo.
 
 Por este motivo, una vez insertado al anillo, la parte `ChordServer` le informa a la `TweeterServer` de ese ordenador mediante un mensaje con los datos `chord_id`, `succesors` y `siblings`, que son el identificador que tienen dentro del anillo, una lista con los IPs de sus sucesores en el anillo y una lista con los IPs de las otras máquinas de su propio Nodo(hermanos), respectivamente, esta última será vacía en el caso que sea el primero de ese Nodo. Basándose en esta información, el `TweeterServer` establecerá comunicación con alguno de sus hermanos en caso de tener, o con alguno de sus sucesores en caso contrario, creando un nuevo hilo para dicha comunicación.
+<<<<<<< HEAD
 
 Para realizar una transferencia de datos correcta, el orden en que se transfieran las tablas de la base de datos importa, debido a que los usuarios sun llaves foráneas en la mayoría de la tablas, la tabla de ususarios ha de ser la primera en copiarse. De este modo se van transfiriendo bloques de datos entre una computadora y la otra hasta que se hayan enviado toda la base de datos.
 
 >Para la transferencia de datos se requiere que el servidor nuevo envíe su `chord_id` para que así el otro servidor sepa que porción de la base de datos enviar. 
 Los datos se transfieren en bloques de 20 filas de la tabla cada vez.
+
+# Tolerancia a Fallas
+
+Un sistema distribuido por lo general puede presentar 3 tipos de fallas: las transitorias, las permanentes, y las intermitentes. A continuación explicamos las tolerancias con las que cuenta nuestro sistema distribuído:
+
+- Lectura correcta de mensajes: Todo información que se envíe debe respectar el protocolo de comunicación explicado. Si por alguna extraña razón los bytes transferidos se modificaran y llegaran con algún defecto, los componentes al recibirlos e intentar decodificarlos, lo notarán y lo descartarán notificando por lo general un error en la conexión. Esto nos ayudará a que una falla intermitente de eeste estilo, mate hilos de ejecución.
+
+- Envío Múltiple: En la mayoría de las comunicaciones las componentes implicadas en el envío de información contarán con una pequeña lista de IPs a los que pudiera solicitar la consulta. Entonces en vez de establecer la comunicación solamente con una componente, esta intentará establecer una conexión con cada uno, y con el primero que esta conexión se establezca, se realizará la consulta. Es importante aclarar que NO es que se intenten abrir de forma simultánea todas estas conexiones sino que se van probando uno a una, hasta que la primera acierte. Note que esto disfraza algunas las fallas transitorias cuando no se puede establecer conexión con alguna componente, y el cliente por otra parte no se entera con cuantos servidores no se pudo estableceruna comunicación.
+
+- Envío persistente: Hay casos donde es necesario establecer una comunicación con una componente específica y que aún cuando no esté disponible, se le envíe al reincorporarse al sistema. Ejemplo de ello son las `Tareas Pendientes`. En sentido general tenemos 2 categorías para esta tolerancia:
+    - Relajado: Es cuando el recurso o el mensaje que se quiere enviar no requiere de una prioridad sumamente alta, y por lo tanto se intenta reenviar luego de un tiempo no tan corto (generalmente aleatorio). Dígase por ejemplo, datos que debe actualizar una réplica; en este caso, es necesario que la réplica en cuestión agregue esa información, pero por lo general si esta conexión no se establece es porque dicha réplica está caída, así que debe tomar su tiempo reincorporarla, por lo tanto no hay necesidad de insistir con una frecuencia muy alta. Y de esta forma se van realizando otras tareas que sí se pueden realizar.
+    - Frencuente: Es cuando el recurso o el mensaje que se quiere enviar tiene un alto grado de prioridad, por ejemplo la actualización de la DHT del anillo del Chord. [Muelita del CHINO]  
+
+    De esta manera note que los fallos temporales al sacar alguna réplica del Sistema, y luego integrarlas se evitarían.
+
+- Réplica de información en un nodo: Relacionado con el punto anterior, si ocurre un fallo permanente donde una réplica sale del Sistema, digamos que porque dicha PC se rompió, se le quemaron los discos, etc, pudiera reemplzarse por otra, que al añadirla nuevamente al nodo obtendría toda la información que se había perdido, ya que dentro de un nodo se replica la información. De esta manera note que el usuario no se entera cuándo desapareció una réplica por este causa, y tampoco cuándo se incorpora una nueva.
+
+- Sugerencia de Componentes Vivas: Ya explicamos en secciones anteriores cómo funciona el proceso de `Stalking`, pero debemos señalar que este tiene un papel importante para evitar fallas transitorias de errores en la red para comunicarse con alguna componente, pues cuando un `ChordServer` le pide a un `EntryPoint` algún IP de alguien en el anillo, para poder incorporarse, este le da aleatoriamente una lista pequeña de `ChordServer`s que fueron acosador recientemente y se suponen que estén vivos. De esa forma es más probable que se logre establecer una conexión.
+
+- Tiempo de Espera: Cuando se hace una petición entre componentes cuya respuesta no será inmediata, por lo general se toma un tiempo para procesar la consulta entera. Además habrá veces donde luego de hacer alguna petición se pudiera romper la conexión antes de recibir una respuesta. Por lo tanto una forma de evitar provocar un error mayor, como dejar trabajando un hilo innecesariamente o incluso que pueda quedarse siempre flotando inutilizado, es esperar un tiempo la respuesta de la consulta. Si la respuesta llega a tiempo, el flujo de la operación que se esté realizando continúa, pero en caso de que el tiempo de espere se sobrepase, se para la operación y se notifica que se agotó el tiempo de espera. De cara al cliente esto es de lo único que se puede enterar para peticiones que vengan desde el `Client`, pero ni tan siquiera sabrá si fue que una réplica se cayó, u otra cosa. En dicho caso, el usuario podría repetir la consulta.
 
 ## Transparencia de las operaciones
 
