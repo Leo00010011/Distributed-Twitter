@@ -1,5 +1,5 @@
 # <center>Tweeter Distribuído 📱</center>
-
+![](img.png)
 ## Equipo:
 - Lázaro Daniel González Martínez
 - Alejandra Monzón Peña
@@ -125,6 +125,17 @@ Con el otro servidor que interactuan los TweeterServer es el EntryServer, el cua
 
 ![](img.png)
 
+En la imagen anterior se muestra una representación de la Red Dweeter:
+
+- Cuadrados: Computadoras
+    - Azul: `Client`
+    - Azul Cyan: `EntryServer`
+    - Rosado: `TweeterServer`
+    - Morado: `ChordServer`
+- Hexágono: Nodo del Chord
+- Anillo: Anillo del Chord
+- Líneas: Peticiones y respuestas entre los Servers 
+
 # Comunicación de Componentes
 
 
@@ -193,11 +204,11 @@ Cuando un nuevo `TweeterServer-ChordServer` se inserta al anillo del Chord este 
 
 Por este motivo, una vez insertado al anillo, la parte `ChordServer` le informa a la `TweeterServer` de ese ordenador mediante un mensaje con los datos `chord_id`, `succesors` y `siblings`, que son el identificador que tienen dentro del anillo, una lista con los IPs de sus sucesores en el anillo y una lista con los IPs de las otras máquinas de su propio Nodo(hermanos), respectivamente, esta última será vacía en el caso que sea el primero de ese Nodo. Basándose en esta información, el `TweeterServer` establecerá comunicación con alguno de sus hermanos en caso de tener, o con alguno de sus sucesores en caso contrario, creando un nuevo hilo para dicha comunicación.
 
-
 Para realizar una transferencia de datos correcta, el orden en que se transfieran las tablas de la base de datos importa, debido a que los usuarios sun llaves foráneas en la mayoría de la tablas, la tabla de ususarios ha de ser la primera en copiarse. De este modo se van transfiriendo bloques de datos entre una computadora y la otra hasta que se hayan enviado toda la base de datos.
 
 >Para la transferencia de datos se requiere que el servidor nuevo envíe su `chord_id` para que así el otro servidor sepa que porción de la base de datos enviar. 
-Los datos se transfieren en bloques de 20 filas de la tabla cada vez.
+>
+>Los datos se transfieren en bloques de 20 filas de la tabla cada vez.
 
 # Tolerancia a Fallas
 
@@ -221,4 +232,6 @@ Un sistema distribuido por lo general puede presentar 3 tipos de fallas: las tra
 
 ## Transparencia de las operaciones
 
-Cuando un cliente accede a cualquiera de las funcionalidades de Dweeter, todas las acciones que el sistema realice se mantienen transparentes para él. La única información que conoce un usuario es que se está comunicando con un servidor al que le está haciendo peticiones y que este le envía respuestas, pero jamás contacta siquiera con los `ChordServer-TweeterServer`, ni conoce que su información está fragmentada en distintas computadoras de la red. 
+Cuando un cliente accede a cualquiera de las funcionalidades de Dweeter, todas las acciones que el sistema realice se mantienen transparentes para él. La única información que conoce un usuario es que se está comunicando con un servidor al que le está haciendo peticiones y que este le envía respuestas, pero jamás contacta siquiera con los `ChordServer-TweeterServer`, ni conoce que su información está fragmentada en distintas computadoras de la red.
+
+De igual modo los usuarios no se enteran de que se agreguen o caidgan servidores en la red, ni de la cantidad de intentos de comunicación faliidos que puedan ocurrir en lo que se resuelven los datos para responder a sus peticiones.
