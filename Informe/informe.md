@@ -22,13 +22,12 @@ Las acciones que pueden realizar los usuarios son:
 
 #### Registrarse en el sistema 
 
-Para registrarse el usuario debe proveer un **Nombre**, un **Nick** que ha de ser único y por el que se le identificará por los restantes usuarios para poder seguirlo y ver su perfil, y una **Contraseña**. 
+Para registrarse el usuario debe proveer un `Nombre`, un `Nick` que ha de ser único y por el que se le identificará por los restantes usuarios para poder seguirlo y ver su perfil, y una `Contraseña`. 
 
-La acción de un usuario de registrarse será exitosa si el **Nick** que escoja no está en uso, en caso contrario recibirá un mensaje informándole que debe buscar otro Nick.
+La acción de un usuario de registrarse será exitosa si el `Nick` que escoja no está en uso, en caso contrario recibirá un mensaje informándole que debe buscar otro Nick.
 
 #### Iniciar Sesión 
-La acción de iniciar sesión requiere que el usuario esté registrado en el sistema. Para loggearse el usuario debe poner su **Nick** y **Contraseña**, si 
-los datos son introducidos correctamente el loggeo será exitoso, en caso que la contraseña no se corresponda con el Nick o que el Nick no esté registrado se informará al usuario con un mensaje de combinación de Nick/Contraseña incorrecta.
+La acción de iniciar sesión requiere que el usuario esté registrado en el sistema. Para loggearse el usuario debe poner su `Nick` y `Contraseña`, si los datos son introducidos correctamente el loggeo será exitoso, en caso que la contraseña no se corresponda con el Nick o que el Nick no esté registrado se informará al usuario con un mensaje de combinación de Nick/Contraseña incorrecta.
 
 Para poder publicar, seguir, re-publicar, ver perfiles y pedir visualizar Dweets el usuario debe estar loggeado en el sistema.
 
@@ -42,17 +41,17 @@ La acción de re-publicar un Dweet requiere que el usuario seleccione un Dweet e
 
 #### Seguir un usuario
 
-Un usuario para seguir a otro debe conocer su **Nick** y decir que quiere comenzar a seguir a ese usuario, si el Nick del usuario al que quiere seguir existe, comenzará a seguir a este usuario. Seguir a un usuario implica que cuando se pida ver nuevos Dweets las publicaciones y re-publicaciones de este usuario van a eventualmente aparecer, manteniéndose al tanto de su contenido.
+Un usuario para seguir a otro debe conocer su `Nick` y decir que quiere comenzar a seguir a ese usuario, si el Nick del usuario al que quiere seguir existe, comenzará a seguir a este usuario. Seguir a un usuario implica que cuando se pida ver nuevos Dweets las publicaciones y re-publicaciones de este usuario van a eventualmente aparecer, manteniéndose al tanto de su contenido.
 
 #### Ver perfil
-Para ver un perfil se debe introducir el **Nick** del usuario cuyo perfil se desea ver, esto mostrará todos los Dweets y ReDweets hechos por este usuario. 
+Para ver un perfil se debe introducir el `Nick` del usuario cuyo perfil se desea ver, esto mostrará todos los Dweets y ReDweets hechos por este usuario. 
 
 #### Pedir nuevos Dweets
 Esta acción muestra un conjuto de Dweets y ReDweets de usuarios a los que estás siguiendo, es una acción que mientras mas veces se repita más cantidad de contenido se podrá visualizar e se informará de publicaciones que aún no se hayan visto.
 
 #### Cerrar Sesión 
 
-Es la forma segura de salir de la red social y que nadie pueda acceder a tu cuenta a menos que conozca el **Nick** y **Contraseña** correspondientes para loggearse nuevamente.
+Es la forma segura de salir de la red social y que nadie pueda acceder a tu cuenta a menos que conozca el `Nick` y `Contraseña` correspondientes para loggearse nuevamente.
 
 ### Interacción con Dwitter
 
@@ -64,7 +63,7 @@ Para almacenar la información se utilizó una base de datos relacional en SQLit
 
 ### Almacenamiento distribuído
 
-Como los servidores de datos (*TweeterServers*) están dispuestos en forma de anillo y se comunican para buscar los recursos mediante una *DHT* con un algoritmo *Chord*, entonces se aprovecha el identificador de cada Nodo del Chord para repartir la información a almacenar. Como en el algoritmo Chord cada Nodo responde por los recursos que tengan identificador menor que el de dicho Nodo y mayor que el de su antecesor en la DHT, y aprovechando las características propias de las Redes Sociales, en que todo requiere de un usuario registrado para poder intercambiar, utilizamos la misma función de *hash* con la que se decidió el identificador del Nodo para hashear los Nicks de los usuarios, de modo que todos los recursos (publicaciones, Nicks de a quienes sigue, Datos de loggeo, etc) relativos a usuarios con identificador en el mismo segmento del chord se encuentran en un mismo Nodo; mientras que usuarios con identifiador en dos secciones diferentes del anillo del chord tienen sus datos almacenados en Nodos diferentes. 
+Como los servidores de datos (`TweeterServers`) están dispuestos en forma de anillo y se comunican para buscar los recursos mediante una `DHT` con un algoritmo `Chord`, entonces se aprovecha el identificador de cada Nodo del Chord para repartir la información a almacenar. Como en el algoritmo Chord cada Nodo responde por los recursos que tengan identificador menor que el de dicho Nodo y mayor que el de su antecesor en la DHT, y aprovechando las características propias de las Redes Sociales, en que todo requiere de un usuario registrado para poder intercambiar, utilizamos la misma función de `hash` con la que se decidió el identificador del Nodo para hashear los Nicks de los usuarios, de modo que todos los recursos (publicaciones, Nicks de a quienes sigue, Datos de loggeo, etc) relativos a usuarios con identificador en el mismo segmento del chord se encuentran en un mismo Nodo; mientras que usuarios con identifiador en dos secciones diferentes del anillo del chord tienen sus datos almacenados en Nodos diferentes. 
 
 Con esta forma de distribuir los datos, mientras más crezca el número de usuarios de Dweeter, mayor cantidad de Nicks de usuario existirán y más equilibrada estará la cantidad de información almacenada en cada uno de los Nodos.
 
@@ -127,7 +126,7 @@ Con el otro servidor que interactuan los TweeterServer es el EntryServer, el cua
 # Comunicación de Componentes
 
 
-Para la comunicación entre las componentes del sistema se creó un protocolo de comunicación. Cada mensaje enviado en la red tiene la estructura [ Tipo | Protocolo | Datos ], de modo que cada Server pueda distinguir basándose en el *Tipo* del Server que le escibe y en el *Protocolo* del mensaje, cuáles son las acciones a realizar y cuales son los valores que están almacendaos en los *Datos*. 
+Para la comunicación entre las componentes del sistema se creó un protocolo de comunicación. Cada mensaje enviado en la red tiene la estructura [ Tipo | Protocolo | Datos ], de modo que cada Server pueda distinguir basándose en el `Tipo` del Server que le escibe y en el `Protocolo` del mensaje, cuáles son las acciones a realizar y cuales son los valores que están almacendaos en los `Datos`. 
 
 Los tipos disponibles son: `Client, Entry, Logger, Tweet, Chord`
 
@@ -190,7 +189,12 @@ Cuando un nuevo `TweeterServer-ChordServer` se inserta al anillo del Chord este 
 - En el caso de insertarse como nuevo nodo, deberá copiar los datos que le corresponden en su rango de hash asignado.
 - En el caso de insertarse como réplica dentro de un nodo, deberá replicar todos los datos que tenga el nodo.
 
-[Insertar muelita de como se realiza la transferencia]
+Por este motivo, una vez insertado al anillo, la parte `ChordServer` le informa a la `TweeterServer` de ese ordenador mediante un mensaje con los datos `chord_id`, `succesors` y `siblings`, que son el identificador que tienen dentro del anillo, una lista con los IPs de sus sucesores en el anillo y una lista con los IPs de las otras máquinas de su propio Nodo(hermanos), respectivamente, esta última será vacía en el caso que sea el primero de ese Nodo. Basándose en esta información, el `TweeterServer` establecerá comunicación con alguno de sus hermanos en caso de tener, o con alguno de sus sucesores en caso contrario, creando un nuevo hilo para dicha comunicación.
+
+Para realizar una transferencia de datos correcta, el orden en que se transfieran las tablas de la base de datos importa, debido a que los usuarios sun llaves foráneas en la mayoría de la tablas, la tabla de ususarios ha de ser la primera en copiarse. De este modo se van transfiriendo bloques de datos entre una computadora y la otra hasta que se hayan enviado toda la base de datos.
+
+>Para la transferencia de datos se requiere que el servidor nuevo envíe su `chord_id` para que así el otro servidor sepa que porción de la base de datos enviar. 
+Los datos se transfieren en bloques de 20 filas de la tabla cada vez.
 
 # Tolerancia a Fallas
 
@@ -211,3 +215,4 @@ Un sistema distribuido por lo general puede presentar 3 tipos de fallas: las tra
 - Sugerencia de Componentes Vivas: Ya explicamos en secciones anteriores cómo funciona el proceso de `Stalking`, pero debemos señalar que este tiene un papel importante para evitar fallas transitorias de errores en la red para comunicarse con alguna componente, pues cuando un `ChordServer` le pide a un `EntryPoint` algún IP de alguien en el anillo, para poder incorporarse, este le da aleatoriamente una lista pequeña de `ChordServer`s que fueron acosador recientemente y se suponen que estén vivos. De esa forma es más probable que se logre establecer una conexión.
 
 - Tiempo de Espera: Cuando se hace una petición entre componentes cuya respuesta no será inmediata, por lo general se toma un tiempo para procesar la consulta entera. Además habrá veces donde luego de hacer alguna petición se pudiera romper la conexión antes de recibir una respuesta. Por lo tanto una forma de evitar provocar un error mayor, como dejar trabajando un hilo innecesariamente o incluso que pueda quedarse siempre flotando inutilizado, es esperar un tiempo la respuesta de la consulta. Si la respuesta llega a tiempo, el flujo de la operación que se esté realizando continúa, pero en caso de que el tiempo de espere se sobrepase, se para la operación y se notifica que se agotó el tiempo de espera. De cara al cliente esto es de lo único que se puede enterar para peticiones que vengan desde el `Client`, pero ni tan siquiera sabrá si fue que una réplica se cayó, u otra cosa. En dicho caso, el usuario podría repetir la consulta.
+
