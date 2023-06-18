@@ -127,6 +127,13 @@ Con el otro servidor que interactuan los TweeterServer es el EntryServer, el cua
 # Comunicación de Componentes
 
 
+Para la comunicación entre las compomentes del sistema se creó un protocolo de comunicación. Cada mensaje enviado en la red tiene la estructura [Tipo | Protocolo | Datos], de modod que cada Server pueda distinguir basándose en el *Tipo* del Server que le escibe y en el *Protocolo* del mensaje, cuáles son las acciones a realizar y cuales son los valores que están almacendaos en los *Datos*. 
+
+Los tipos disponibles son: `Client, Entry, Logger, Tweet, Chord`
+
+uno por cada Servidor que interviene,excepto los TweeterServer que por cuestion de comodidad responden tanto como tipo Logger como por tipo Tweet, para separar las funcionalidades de registro y loggeo del resto de manejo de Dweets y ReDweets.
+
+
 ## Consultas
 
 El mecanismo base para hacer una consulta completa desde el cliente pasa por una serie de pasos:
@@ -185,11 +192,4 @@ Cuando un nuevo `TweeterServer-ChordServer` se inserta al anillo del Chord este 
 
 [Insertar muelita de como se realiza la transferencia]
 
-
-
-Para la comunicación entre las compomentes del sistema se creó un protocolo de comunicación. Cada mensaje enviado en la red tiene la estructura [Tipo | Protocolo | Datos], de modod que cada Server pueda distinguir basándose en el *Tipo* del Server que le escibe y en el *Protocolo* del mensaje, cuáles son las acciones a realizar y cuales son los valores que están almacendaos en los *Datos*. 
-
-Los tipos disponibles son: `Client, Entry, Logger, Tweet, Chord`
-
-uno por cada Servidor que interviene,excepto los TweeterServer que por cuestion de comodidad responden tanto como tipo Logger como por tipo Tweet, para separar las funcionalidades de registro y loggeo del resto de manejo de Dweets y ReDweets.
 
