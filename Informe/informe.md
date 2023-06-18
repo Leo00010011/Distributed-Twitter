@@ -64,7 +64,7 @@ Para almacenar la información se utilizó una base de datos relacional en SQLit
 
 ### Almacenamiento distribuído
 
-Como los servidosres de datos (*TweeterServers*) están dispuestos en forma de anillo y se comunican para buscar los recursos mediante una *DHT* con un algoritmo *Chord*, entonces se aprovecha el identificador de cada Nodo del Chord para repartir la información a almacenar. Como en el algoritmo Chord cada Nodo responde por los recursos que tengan identificador menor que el de dicho Nodo y mayor que el de su antecesor en la DHT, y aprovechando las características propias de las Redes Sociales, en que todo requiere de un usuario registrado para poder intercambiar, utilizamos la misma función de *hash* con la que se decidió el identificador del Nodo para hashear los Nicks de los usuarios, de modo que todos los recursos (publicaciones, Nicks de a quienes sigue, Datos de loggeo, etc) relativos a usuarios con identificador en el mismo segmento del chord se encuentran en un mismo Nodo; mientras que usuarios con identifiador en dos secciones diferentes del anillo del chord tienen sus datos almacenados en Nodos diferentes. 
+Como los servidores de datos (*TweeterServers*) están dispuestos en forma de anillo y se comunican para buscar los recursos mediante una *DHT* con un algoritmo *Chord*, entonces se aprovecha el identificador de cada Nodo del Chord para repartir la información a almacenar. Como en el algoritmo Chord cada Nodo responde por los recursos que tengan identificador menor que el de dicho Nodo y mayor que el de su antecesor en la DHT, y aprovechando las características propias de las Redes Sociales, en que todo requiere de un usuario registrado para poder intercambiar, utilizamos la misma función de *hash* con la que se decidió el identificador del Nodo para hashear los Nicks de los usuarios, de modo que todos los recursos (publicaciones, Nicks de a quienes sigue, Datos de loggeo, etc) relativos a usuarios con identificador en el mismo segmento del chord se encuentran en un mismo Nodo; mientras que usuarios con identifiador en dos secciones diferentes del anillo del chord tienen sus datos almacenados en Nodos diferentes. 
 
 Con esta forma de distribuir los datos, mientras más crezca el número de usuarios de Dweeter, mayor cantidad de Nicks de usuario existirán y más equilibrada estará la cantidad de información almacenada en cada uno de los Nodos.
 
@@ -114,12 +114,12 @@ Este Servidor se comunica con otros de su mismo tipo con el objetivo de:
 
 La comunicación entre un TweeterServer y un ChordServer se emplea solamente para dos procesos:
 
->- Cuando la computadora se agrega al sistema y como ChordServer y TweeterServer coexisten en una misma máquina, atendiendo a peticiones por puertos diferentes, una vez que el ChordServer inserta la computadora en el Nodo correspondiente se informa a sí mismo, por el puerto del TweeterServer la información necesaria para que el este pueda obtener los datos del Nodo al que pertenece. 
+>- Cuando la computadora se agrega al sistema y como ChordServer y TweeterServer coexisten en una misma máquina, atendiendo a peticiones por puertos diferentes, una vez que el ChordServer inserta la computadora en el Nodo correspondiente se informa a sí mismo, por el puerto del TweeterServer la información necesaria para que este pueda obtener los datos del Nodo al que pertenece. 
 >- Cuando un TweeterServer necesita contactar con otro, que tiene los datos de un ususario en específico; para esto se comunica con el ChordServer desde el otro puerto de la misma computadora y le solicita que haga la búsqueda en la DHT para conseguirle los IPs de los servidores del Nodo con el que desea contactar.
 
 Con el otro servidor que interactuan los TweeterServer es el EntryServer, el cual es el mediador entre los clientes y los TweeterServer.
 
->- Los TweeterServer se comunican con los EntryServer para responder a los mensajes de estos informándoles que aun están activos en la red.
+>- Los TweeterServer se comunican con los EntryServer para responder a los mensajes de estos informándoles que aún están activos en la red.
 >- Cuando un usuario quiere realizar cualquier acción en Dweeter, el EntryServer con el que conecte es el que se comunica con el TweeterServer y así se maneja la transacción de forma transparente para el usuario.
 
 ![](img.png)
@@ -127,11 +127,11 @@ Con el otro servidor que interactuan los TweeterServer es el EntryServer, el cua
 # Comunicación de Componentes
 
 
-Para la comunicación entre las compomentes del sistema se creó un protocolo de comunicación. Cada mensaje enviado en la red tiene la estructura [Tipo | Protocolo | Datos], de modod que cada Server pueda distinguir basándose en el *Tipo* del Server que le escibe y en el *Protocolo* del mensaje, cuáles son las acciones a realizar y cuales son los valores que están almacendaos en los *Datos*. 
+Para la comunicación entre las componentes del sistema se creó un protocolo de comunicación. Cada mensaje enviado en la red tiene la estructura [ Tipo | Protocolo | Datos ], de modo que cada Server pueda distinguir basándose en el *Tipo* del Server que le escibe y en el *Protocolo* del mensaje, cuáles son las acciones a realizar y cuales son los valores que están almacendaos en los *Datos*. 
 
 Los tipos disponibles son: `Client, Entry, Logger, Tweet, Chord`
 
-uno por cada Servidor que interviene,excepto los TweeterServer que por cuestion de comodidad responden tanto como tipo Logger como por tipo Tweet, para separar las funcionalidades de registro y loggeo del resto de manejo de Dweets y ReDweets.
+uno por cada Servidor que interviene,excepto los TweeterServer que por cuestión de comodidad responden tanto como tipo Logger como por tipo Tweet, para separar las funcionalidades de registro y loggeo del resto de manejo de Dweets y ReDweets.
 
 
 ## Consultas
