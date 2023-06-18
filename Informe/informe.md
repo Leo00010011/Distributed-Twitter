@@ -222,3 +222,7 @@ Un sistema distribuido por lo general puede presentar 3 tipos de fallas: las tra
 ## Transparencia de las operaciones
 
 Cuando un cliente accede a cualquiera de las funcionalidades de Dweeter, todas las acciones que el sistema realice se mantienen transparentes para él. La única información que conoce un usuario es que se está comunicando con un servidor al que le está haciendo peticiones y que este le envía respuestas, pero jamás contacta siquiera con los `ChordServer-TweeterServer`, ni conoce que su información está fragmentada en distintas computadoras de la red. 
+
+## Caché del Cliente
+
+Además de todas las funcionalidades que brinda el Sistema Distribuido se implementó del lado del `Cliente` un `ShellCLient` interactivo para que el usuario pueda estar dentro de `Dweeter`. Esta implementación además cuenta con una memoria `Caché` de la información de perfiles. Esta se va llenando a medidad que se van visitando perfiles, o pidiendo nuevos Dweet y/o ReDweets; y finalmente cuando no haya conexión se le mostrará al usuario publicaciones guardadas en ellas. De esta forma el usuario puede entretenerse con publicaciones que aunque ya las vio, puede analizarlas mejor y no tener una pantalla en blanco, mientras regresa la conexión.
