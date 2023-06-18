@@ -98,6 +98,8 @@ __pypackages__/
 celerybeat-schedule
 celerybeat.pid
 
+mine.md
+my_entrys.txt
 # SageMath parsed files
 *.sage.py
 *_log
