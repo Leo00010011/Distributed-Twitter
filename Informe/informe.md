@@ -182,7 +182,7 @@ Note que la lista de tareas de esta forma eventualmente actualizará a las compo
 
 ## Inserción de un nuevo `ChordServer-TweeterServer`
 
-Cuando un nuevo `ChordServer-TweeterServer` se quiere insertar en el anillo del Chord, primero estable una comunicación con algún `EntryServer` para pedir algún `ChordServer` que ya esté en el anillo del Chord. Luego le pide a este insertarse y [Insertar cositas breves del Chino]. Finalmente cuando el Chord se inserta se comunica con el `EntryServer` para notificarle que se insertó correctamente, al igual que se comunica con su `TweeterServer` asociado para indicarle el id que le corresponde, sus sucesores, y sus hermanos.
+Cuando un nuevo `ChordServer-TweeterServer` se quiere insertar en el anillo del Chord, primero estable una comunicación con algún `EntryServer` para pedir algún `ChordServer` que ya esté en el anillo del Chord. Luego le pide a este le pide el ip del servidor que es sucesor del id que se le asignó. Luego este le avisa al sucesor que es su nuevo predecesor y al predecesor de su sucesor que es su nuevo sucesor, quedando insertado en sus fingertable, y por supuesto construye la suya con este sucesor y el otro predecesor. Finalmente cuando el Chord se inserta se comunica con el `EntryServer` para notificarle que se insertó correctamente, al igual que se comunica con su `TweeterServer` asociado para indicarle el id que le corresponde, sus sucesores, y sus hermanos.
 
 ## Réplicas y Transferencia de Datos
 
@@ -209,7 +209,7 @@ Un sistema distribuido por lo general puede presentar 3 tipos de fallas: las tra
 
 - Envío persistente: Hay casos donde es necesario establecer una comunicación con una componente específica y que aún cuando no esté disponible, se le envíe al reincorporarse al sistema. Ejemplo de ello son las `Tareas Pendientes`. En sentido general tenemos 2 categorías para esta tolerancia:
     - Relajado: Es cuando el recurso o el mensaje que se quiere enviar no requiere de una prioridad sumamente alta, y por lo tanto se intenta reenviar luego de un tiempo no tan corto (generalmente aleatorio). Dígase por ejemplo, datos que debe actualizar una réplica; en este caso, es necesario que la réplica en cuestión agregue esa información, pero por lo general si esta conexión no se establece es porque dicha réplica está caída, así que debe tomar su tiempo reincorporarla, por lo tanto no hay necesidad de insistir con una frecuencia muy alta. Y de esta forma se van realizando otras tareas que sí se pueden realizar.
-    - Frencuente: Es cuando el recurso o el mensaje que se quiere enviar tiene un alto grado de prioridad, por ejemplo la actualización de la DHT del anillo del Chord. [Muelita del CHINO]  
+    - Frencuente: Es cuando el recurso o el mensaje que se quiere enviar tiene un alto grado de prioridad, por ejemplo la actualización de la DHT del anillo del Chord. El único factor del que depende el funcionamiento correcto de Chord es que el sucesor y el predecesor puestos en la finger table estén correctos. Por lo que al insertarse un nodo en el Chord este lo intenta persistentemente, pues de quedarse a medias el proceso el predecesor de su sucesor y el sucesor de su predecesor puede quedar en un estado incorrecto.
 
     De esta manera note que los fallos temporales al sacar alguna réplica del Sistema, y luego integrarlas se evitarían.
 
